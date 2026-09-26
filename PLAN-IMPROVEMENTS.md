@@ -20,7 +20,7 @@ Official Seerr OpenAPI (`https://docs.seerr.dev/api/seerr-api/`, export `seerr-a
 
 ## Security decision
 
-After successful `/auth/me`, prompt with three explicit choices: keyring, plaintext config, or session-only. Keyring uses Secret Service and is preferred. Plaintext is opt-in, requires separate warning confirmation, stores the key in the plugin config readable by any process/user with file access, and is chmod `0600` before the key is written. “Don't save” writes no key and keeps the verified key in memory until shell exit. Switching modes/sign-out must clear previous persistent copies. No email/password or cookie login path.
+After Seerr verifies the API key with `/auth/me`, prompt with three choices: keyring, plaintext config, or session-only. Keyring uses Secret Service and is recommended. Plaintext is opt-in, requires a separate warning confirmation, and writes `apiKey` in the config using a `0700` directory and `0600` file; this is unencrypted and any process with access as the user can read it. “Don't save” writes no key and keeps it only in memory until shell exit. Switching modes and sign-out remove old persistent copies. No email/password or cookie login path.
 
 ## Swarm slices
 

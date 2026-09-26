@@ -45,7 +45,7 @@ QtObject {
         stdinEnabled: true
         stdout: SplitParser {}
         stderr: SplitParser {}
-        command: ["sh", "-c", "mkdir -p \"$HOME/.config/omarchy\" && chmod 700 \"$HOME/.config/omarchy\" && umask 077 && cat > \"$HOME/.config/omarchy/seerr-quick-requests.json\" && chmod 600 \"$HOME/.config/omarchy/seerr-quick-requests.json\""]
+        command: ["sh", "-c", "mkdir -p \"$HOME/.config/omarchy/seerr-quick-requests\" && chmod 700 \"$HOME/.config/omarchy/seerr-quick-requests\" && umask 077 && cat > \"$HOME/.config/omarchy/seerr-quick-requests/config.json\" && chmod 600 \"$HOME/.config/omarchy/seerr-quick-requests/config.json\""]
         onStarted: {
             write(api._configWriteText)
             api._configWriteText = ""
@@ -54,8 +54,13 @@ QtObject {
         onExited: function(exitCode, exitStatus) {
             var callback = api._configWriteCallback
             api._configWriteCallback = null
-            if (callback) callback(exitCode === 0)
+            if (callback) callback(exitCode === 0 && exitStatus === 0)
         }
+    }
+    property FileView configFile: FileView {
+        path: Quickshell.env("HOME") + "/.config/omarchy/seerr-quick-requests/config.json"
+        watchChanges: false
+        printErrors: false
     }
     property var requests: []
 
@@ -85,6 +90,7 @@ QtObject {
 
     function _writeConfig(value, callback) {
         if (_configProcess.running) { if (callback) callback(false); return }
+        _configProcess.stdinEnabled = true
         _configWriteText = JSON.stringify(value, null, 2) + "\n"
         _configWriteCallback = callback || null
         _configProcess.running = true

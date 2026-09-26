@@ -28,13 +28,13 @@ Reload Hyprland configuration after adding the binding. The plugin does not edit
 
 ## Sign-in and persistence
 
-Enter your Seerr instance URL and API key (the URL is saved and prefilled next time). Create an API key in **Seerr → Settings → General**; [Seerr's API documentation](https://docs.seerr.dev/api/seerr-api/) documents `X-Api-Key` authentication. After `/auth/me` verifies the key, choose one:
+Enter your Seerr instance URL and API key (the URL is saved and prefilled next time). Create the key in **Seerr → Settings → General**; [Seerr's API documentation](https://docs.seerr.dev/api/seerr-api/) documents `X-Api-Key` authentication. After Seerr verifies the key with `/auth/me`, choose where to save it:
 
-- **Keyring:** encrypted by your desktop Secret Service; requires an unlocked login keyring after reboot.
-- **Plain text:** stored in `~/.config/omarchy/seerr-quick-requests.json`; any process/user that can read that file can use the broad Seerr API key. The UI requires a separate confirmation.
-- **Don't save:** usable only until the current Omarchy shell exits.
+- **Keyring:** recommended; stored in desktop Secret Service and protected by your login keyring. It must be unlocked after reboot.
+- **Plain text:** written to `~/.config/omarchy/seerr-quick-requests.json` with owner-only permissions (`0600` file, `0700` directory). It is still unencrypted; anyone who can access your account can read and use this broad Seerr API key. A separate confirmation is required.
+- **Don't save:** kept in memory only until the current shell exits.
 
-The instance URL is saved separately. Sign out from **Settings** to remove the saved credential.
+The instance URL is saved separately. **Settings → Sign out** removes the saved key/config value. Local email/password and cookie sign-in are not supported. If Secret Service fails, choose plaintext or session-only.
 
 ## Included
 
