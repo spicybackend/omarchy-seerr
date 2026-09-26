@@ -20,8 +20,7 @@ Official Seerr OpenAPI (`https://docs.seerr.dev/api/seerr-api/`, export `seerr-a
 
 ## Security decision
 
-Use `secret-tool`/Freedesktop Secret Service for the Seerr API key. Store one secret per normalized server origin as an attribute, distinguish plugin/schema with stable service attributes, never log the secret, and clear it on sign-out. Persist only the non-secret instance URL in `~/.config/omarchy/seerr-quick-requests.json`; never store the API key/token in settings, shell.json, or JSON. Authentication is API-key only; if Secret Service is absent/unavailable/locked, login fails with an actionable message. The key grants broad Seerr API access; require `/auth/me` verification before storing it.
-Following the later user instruction, onboarding now has only an API-key field and URL; email/password and cookie auth paths are removed. This plan supersedes its earlier fallback wording.
+After successful `/auth/me`, prompt with three explicit choices: keyring, plaintext config, or session-only. Keyring uses Secret Service and is preferred. Plaintext is opt-in, requires separate warning confirmation, stores the key in the plugin config readable by any process/user with file access, and is chmod `0600` before the key is written. “Don't save” writes no key and keeps the verified key in memory until shell exit. Switching modes/sign-out must clear previous persistent copies. No email/password or cookie login path.
 
 ## Swarm slices
 

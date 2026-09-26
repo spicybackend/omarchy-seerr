@@ -5,7 +5,7 @@ import Quickshell.Io
 QtObject {
     id: api
     signal requestSucceeded(string mediaType, int tmdbId, var request)
-    property string authMode: "apiKey"
+    property string authMode: "session"
     property bool keyringAvailable: false
     property var _apiKey: ""
     property string _pendingKeyOperation: ""
@@ -35,6 +35,28 @@ QtObject {
     property bool busy: false
     property string error: ""
     property var searchResults: []
+    property bool awaitingKeyStorageChoice: false
+    property string _verifiedKeyForChoice: ""
+    property string persistenceMode: "session"
+    property string _configWriteText: ""
+    property var _configWriteCallback: null
+    property Process _configProcess: Process {
+        id: configProcess
+        stdinEnabled: true
+        stdout: SplitParser {}
+        stderr: SplitParser {}
+        command: ["sh", "-c", "mkdir -p \"$HOME/.config/omarchy\" && chmod 700 \"$HOME/.config/omarchy\" && umask 077 && cat > \"$HOME/.config/omarchy/seerr-quick-requests.json\" && chmod 600 \"$HOME/.config/omarchy/seerr-quick-requests.json\""]
+        onStarted: {
+            write(api._configWriteText)
+            api._configWriteText = ""
+            stdinEnabled = false
+        }
+        onExited: function(exitCode, exitStatus) {
+            var callback = api._configWriteCallback
+            api._configWriteCallback = null
+            if (callback) callback(exitCode === 0)
+        }
+    }
     property var requests: []
 
     property string _operation: ""
@@ -43,19 +65,12 @@ QtObject {
     property var _detailXhrs: []
     property var _pendingKeyCallback: null
 
-    property FileView configFile: FileView {
-        path: Quickshell.env("HOME") + "/.config/omarchy/seerr-quick-requests.json"
-        watchChanges: false
-        printErrors: false
-    }
 
     function _baseUrl(value) {
         var url = String(value || "").trim().replace(/\/+$/, "")
-        if (!/^https?:\/\//i.test(url))
-            throw new Error("Enter a valid Seerr URL including http:// or https://.")
+        if (!/^https?:\/\//i.test(url)) throw new Error("Enter a valid Seerr URL including http:// or https://.")
         var apiPath = url.indexOf("/api/v1")
-        if (apiPath >= 0 && apiPath + 7 === url.length)
-            url = url.substring(0, apiPath)
+        if (apiPath >= 0 && apiPath + 7 === url.length) url = url.substring(0, apiPath)
         return url
     }
 
@@ -68,6 +83,14 @@ QtObject {
         return base + (path.indexOf("/api/v1/") === 0 ? path.substring(7) : "/api/v1" + path)
     }
 
+    function _writeConfig(value, callback) {
+        if (_configProcess.running) { if (callback) callback(false); return }
+        _configWriteText = JSON.stringify(value, null, 2) + "\n"
+        _configWriteCallback = callback || null
+        _configProcess.running = true
+    }
+
+
     function _fail(message) {
         busy = false
         error = message
@@ -75,9 +98,7 @@ QtObject {
         _xhr = null
         _requestCallback = null
     }
-    function _saveUrl() {
-        configFile.setText(JSON.stringify({ serverUrl: serverUrl }))
-    }
+
 
     function _secretArgs(action, base) {
         var origin = new URL(base).origin.toLowerCase()
@@ -127,7 +148,7 @@ QtObject {
     }
 
     function _keyHeader(xhr) {
-        if (authMode === "apiKey" && _apiKey) xhr.setRequestHeader("X-Api-Key", _apiKey)
+        if (_apiKey) xhr.setRequestHeader("X-Api-Key", _apiKey)
     }
 
     function _year(date) {
@@ -340,10 +361,20 @@ QtObject {
         xhr.timeout = 20000
         xhr.send(payload === null ? "" : JSON.stringify(payload))
     }
-
-
     function restore() {
-        if (serverUrl) _lookupSavedKey()
+        if (!serverUrl) return
+        var saved
+        try { saved = JSON.parse(configFile.text() || "{}") } catch (e) { saved = ({}) }
+        if (saved.apiKey) {
+            _verifyApiKey(saved.apiKey, "plaintext")
+            return
+        }
+        _startSecret("lookup", serverUrl, "", function(ok, secret) {
+            keyringAvailable = ok
+            if (ok && secret) _verifyApiKey(secret, "keyring")
+            else if (!ok) error = "Secret Service is unavailable. Unlock your desktop keyring and retry."
+            else error = "No saved API key. Sign in to choose how to save it."
+        })
     }
 
     function loginWithApiKey(url, apiKey) {
@@ -351,53 +382,74 @@ QtObject {
         var key = String(apiKey || "").trim()
         if (!key) { error = "Enter a Seerr API key."; return }
         try { serverUrl = _baseUrl(url) } catch (e) { error = String(e.message || e); return }
-        _saveUrl()
-        _verifyApiKey(key, true)
-    }
-
-    function _lookupSavedKey() {
-        _startSecret("lookup", serverUrl, "", function(ok, secret) {
-            keyringAvailable = ok
-            if (ok && secret) _verifyApiKey(secret, false)
-            else if (!ok) error = "Secret Service is unavailable. Unlock or enable your desktop keyring, then retry."
-            else error = "No saved API key. Enter a Seerr API key to sign in."
+        _writeConfig({ serverUrl: serverUrl }, function(ok) {
+            if (!ok) { error = "Could not write the instance URL safely."; return }
+            api._verifyApiKey(key, "choice")
         })
     }
 
-    function _verifyApiKey(key, saveKey) {
+    function _verifyApiKey(key, storage) {
         _apiKey = String(key)
         authMode = "apiKey"
         _send("GET", "/auth/me", null, "keyverify", function(data) {
-            if (!data) { authenticated = false; user = null; _apiKey = ""; error = "Seerr API key did not return a signed-in user."; return }
-            if (saveKey) {
-                _startSecret("store", serverUrl, key, function(ok) {
-                    if (!ok) {
-                        authenticated = false
-                        user = null
-                        _apiKey = ""
-                        authMode = "apiKey"
-                        error = "API key verified but could not be stored in Secret Service. Unlock or enable your keyring and retry."
-                        return
-                    }
-                    api.finishApiKeyLogin(data)
-                })
+            if (!data) {
+                _apiKey = ""
+                error = "Seerr API key did not return a signed-in user."
+                return
+            }
+            user = data
+            if (storage === "choice") {
+                _verifiedKeyForChoice = key
+                awaitingKeyStorageChoice = true
+                error = "API key verified. Choose whether and where to save it."
             } else {
-                api.finishApiKeyLogin(data)
+                authMode = storage
+                authenticated = true
+                refreshRequests()
             }
         }, function() {
-            authenticated = false
-            user = null
             _apiKey = ""
-            authMode = "apiKey"
             error = "The API key was rejected or /auth/me did not return a user."
         })
     }
 
-    function finishApiKeyLogin(data) {
-        user = data
+    function chooseKeyStorage(choice) {
+        if (!awaitingKeyStorageChoice || !_verifiedKeyForChoice) return
+        if (choice === "keyring") {
+            _startSecret("store", serverUrl, _verifiedKeyForChoice, function(ok) {
+                if (!ok) {
+                    error = "Could not save in the keyring. Choose plaintext or don't save."
+                    return
+                }
+                _writeConfig({ serverUrl: serverUrl }, function(ok) {
+                    if (!ok) { error = "Could not write configuration with safe permissions."; return }
+                    _completeKeyLogin("keyring")
+                })
+            })
+        } else if (choice === "plaintext") {
+            _writeConfig({ serverUrl: serverUrl, apiKey: _verifiedKeyForChoice }, function(ok) {
+                if (!ok) { error = "Could not write the plaintext credential file with safe permissions."; return }
+                if (authMode === "keyring") _startSecret("clear", serverUrl, "", function(result) { keyringAvailable = result })
+                _completeKeyLogin("plaintext")
+            })
+        } else if (choice === "none") {
+            _writeConfig({ serverUrl: serverUrl }, function(ok) {
+                if (!ok) { error = "Could not write configuration with safe permissions."; return }
+                if (authMode === "keyring") _startSecret("clear", serverUrl, "", function(result) { keyringAvailable = result })
+                _completeKeyLogin("session")
+            })
+        }
+    }
+
+    function _completeKeyLogin(mode) {
+        authMode = mode
         authenticated = true
+        awaitingKeyStorageChoice = false
+        _verifiedKeyForChoice = ""
         refreshRequests()
     }
+
+
 
     function search(query) {
         var q = String(query || "").trim()
@@ -460,11 +512,22 @@ QtObject {
             requests = []
             searchResults = []
             _apiKey = ""
-            authMode = "apiKey"
-            if (oldMode === "apiKey") _startSecret("clear", oldUrl, "", function(ok) {
-                keyringAvailable = ok
-                if (!ok) error = "Signed out, but Secret Service could not remove the saved API key."
-            })
+            awaitingKeyStorageChoice = false
+            _verifiedKeyForChoice = ""
+            if (oldMode === "plaintext") {
+                _writeConfig({ serverUrl: serverUrl }, function(ok) {
+                    authMode = "session"
+                    if (!ok) error = "Signed out, but the plaintext key could not be removed safely."
+                })
+            } else if (oldMode === "keyring") {
+                authMode = "session"
+                _startSecret("clear", oldUrl, "", function(ok) {
+                    keyringAvailable = ok
+                    if (!ok) error = "Signed out, but the saved key could not be removed from the keyring."
+                })
+            } else {
+                authMode = "session"
+            }
         })
     }
 }

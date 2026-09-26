@@ -17,6 +17,7 @@ Panel {
   property bool showSettings: false
   property int selectedResultIndex: -1
   property bool focusResults: false
+  property bool confirmingKeyStorage: false
 
   readonly property int widthHint: Style.space(440)
   readonly property string fontFamily: Style.font.family
@@ -213,7 +214,7 @@ Panel {
             Button {
               id: loginButton
               Layout.fillWidth: true
-              text: seerrApi.busy ? "Signing in…" : "Sign in and save key"
+              text: seerrApi.busy ? "Signing in…" : "Sign in"
               enabled: !seerrApi.busy && loginUrl.text.trim() !== "" && apiKeyField.text.trim() !== ""
               onClicked: {
                 seerrApi.loginWithApiKey(loginUrl.text.trim(), apiKeyField.text)
@@ -222,6 +223,47 @@ Panel {
             }
           }
 
+          ColumnLayout {
+            visible: seerrApi.awaitingKeyStorageChoice
+            Layout.fillWidth: true
+            spacing: Style.spacing.sm
+            Text {
+              text: "Save this verified API key? Plain-text storage is readable by local processes and users who can read your config file."
+              color: Color.muted
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.bodySmall
+              wrapMode: Text.Wrap
+              Layout.fillWidth: true
+            }
+            Button {
+              Layout.fillWidth: true
+              text: "Save in keyring (recommended)"
+              onClicked: seerrApi.chooseKeyStorage("keyring")
+            }
+            Button {
+              Layout.fillWidth: true
+              text: "Save as plain text"
+              onClicked: root.confirmingKeyStorage = true
+            }
+            Button {
+              Layout.fillWidth: true
+              text: "Don't save (this session only)"
+              onClicked: seerrApi.chooseKeyStorage("none")
+            }
+          }
+          ConfirmDialog {
+            id: plaintextConfirm
+            anchors.fill: parent
+            opened: root.opened && root.confirmingKeyStorage
+            message: "Anyone who can read ~/.config/omarchy/seerr-quick-requests.json can use this broad Seerr API key. Continue only on a trusted single-user machine."
+            cancelText: "Cancel"
+            confirmText: "Save as plain text"
+            onCanceled: root.confirmingKeyStorage = false
+            onConfirmed: {
+              root.confirmingKeyStorage = false
+              seerrApi.chooseKeyStorage("plaintext")
+            }
+          }
           Text {
             visible: seerrApi.error !== ""
             text: seerrApi.error
