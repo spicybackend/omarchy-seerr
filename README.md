@@ -1,6 +1,6 @@
 # Seerr Quick Requests
 
-A small Omarchy Quattro bar popup for searching and requesting TV shows from Seerr.
+A compact Omarchy Quattro bar popup for requesting TV shows and movies from Seerr.
 
 ## Install
 
@@ -26,15 +26,16 @@ bind = SUPER SHIFT ALT, R, exec, omarchy-shell shell toggle io.github.omarchy-se
 
 Reload Hyprland configuration after adding the binding. The plugin does not edit user keybind files automatically.
 
-## First sign-in
-Open the popup, enter your Seerr instance URL (including any reverse-proxy path), email and local Seerr password, then sign in. The URL is retained; the password is never saved. The session cookie lives only in the running shell process, so sign in again after an Omarchy shell restart. Use **Settings → Sign out** to clear the current session.
-Configure a local Seerr account in Seerr first; Plex/Jellyfin OAuth sign-in is not included. Cross-origin instances must allow credentialed CORS; same-origin is the safest configuration. Use HTTPS for remote instances and review the unsandboxed plugin source before enabling it.
+## Sign-in and persistence
+
+Enter your Seerr instance URL and API key (the URL is saved and prefilled next time). Create an API key in **Seerr → Settings → General**; [Seerr's API documentation](https://docs.seerr.dev/api/seerr-api/) documents `X-Api-Key` authentication. The plugin verifies it with `/auth/me`, then stores the key in your desktop Secret Service keyring; it is never written to the plugin config.
+
+The key grants broad Seerr API access. Keep your login keyring unlocked after reboot. If Seerr does not accept API-key authentication for `/auth/me`, or Secret Service is unavailable, the plugin cannot sign in. Local email/password and cookie sign-in are intentionally not supported. Sign out from **Settings** to remove the saved key.
 
 ## Included
 
-- Requested TV shows and their request/availability status.
-- Search Seerr's media catalog and submit TV requests.
-- Available/downloaded state from Seerr's media record.
-- Instance URL/session onboarding and settings sign-out.
+- Requested TV shows and movies, with request/availability status.
+- Mixed TV/movie search, release year, poster thumbnails, and typed requests.
+- API-key persistence in the desktop keyring and saved instance URL.
 
-This is a third-party plugin for current Omarchy Quattro (`manifest.json` schema v1). It makes requests using the signed-in user's Seerr permissions; Seerr may reject requests because of permissions, quotas, or server configuration. Movies and request administration are out of scope.
+This is a third-party Omarchy Quattro plugin (`manifest.json` schema v1). Seerr enforces the key's permissions and quotas. Keyring persistence requires a working Secret Service and an unlocked login keyring after reboot.

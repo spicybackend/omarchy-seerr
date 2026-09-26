@@ -15,18 +15,36 @@ Panel {
   readonly property var barIdentity: hostWidget || root
   property alias api: seerrApi
   property bool showSettings: false
-  property string searchText: ""
+  property int selectedResultIndex: -1
+  property bool focusResults: false
 
   readonly property int widthHint: Style.space(440)
   readonly property string fontFamily: Style.font.family
 
   function open() {
     controller.show()
-    if (seerrApi.authenticated) seerrApi.refreshRequests()
-    else seerrApi.restore()
-    Qt.callLater(function() { if (opened) keyCatcher.forceActiveFocus() })
+    if (seerrApi.authenticated) {
+      searchField.text = ""
+      searchText = ""
+      seerrApi.searchResults = []
+      seerrApi.refreshRequests()
+    } else seerrApi.restore()
+    Qt.callLater(function() {
+      if (opened && seerrApi.authenticated && !showSettings) searchField.forceActiveFocus()
+    })
   }
-
+  function resultType(result) { return String(result.mediaType || "tv").toLowerCase() }
+  function resultTitle(result) { return result.title || result.name || "Untitled" }
+  function resultYear(result) { return String(result.year || result.releaseDate || result.firstAirDate || "").slice(0, 4) }
+  function requestTitle(request) { return request.title || request.name || "Untitled" }
+  function requestYear(request) { return String(request.year || request.releaseDate || request.firstAirDate || "").slice(0, 4) }
+  function moveResultSelection(delta) {
+    if (!seerrApi.searchResults || seerrApi.searchResults.length === 0) return
+    focusResults = true
+    var next = selectedResultIndex < 0 ? 0 : selectedResultIndex + delta
+    selectedResultIndex = Math.max(0, Math.min(seerrApi.searchResults.length - 1, next))
+    Qt.callLater(function() { var item = resultButtons.itemAt(selectedResultIndex); if (item && item.requestButton) item.requestButton.forceActiveFocus() })
+  }
   function close() { controller.hide() }
   function toggle() { opened ? close() : open() }
 
@@ -47,31 +65,28 @@ Panel {
     if (query.length > 0) seerrApi.search(query)
   }
 
-  function isRequested(result) {
-    var id = Number(result && (result.id || result.tmdbId))
-    if (!id || !seerrApi.requests) return false
-    for (var i = 0; i < seerrApi.requests.length; i++) {
-      var media = seerrApi.requests[i].mediaInfo || seerrApi.requests[i].media || {}
-      if (Number(media.tmdbId || media.id) === id) return true
-    }
-    return false
-  }
 
   function mediaStatusLabel(status) {
     switch (Number(status)) {
-    case 5: return "Available / downloaded"
+    case 5: return "Available"
     case 4: return "Partially available"
     case 3: return "Processing"
     case 2: return "Pending"
     case 1: return "Unknown"
     case 6: return "Unavailable"
-    default: return "Not requested"
+    default: return "Requested"
     }
   }
-  function requestStatusLabel(request) {
-    return mediaStatusLabel((request && (request.mediaInfo || request.media || {}).status) || 0)
-  }
+  function requestStatusLabel(request) { return request.statusLabel || mediaStatusLabel((request && (request.mediaInfo || request.media || {}).status) || 0) }
 
+
+  Connections {
+    target: seerrApi
+    function onAuthenticatedChanged() {
+      if (seerrApi.authenticated && root.opened && !root.showSettings)
+        Qt.callLater(function() { if (root.opened && !root.showSettings) searchField.forceActiveFocus() })
+    }
+  }
 
   SeerrApi { id: seerrApi }
 
@@ -89,7 +104,7 @@ Panel {
     PanelKeyCatcher {
       id: keyCatcher
       anchors.fill: parent
-      blocked: loginUrl.activeFocus || emailField.activeFocus || passwordField.activeFocus || searchField.activeFocus
+      blocked: loginUrl.activeFocus || apiKeyField.activeFocus || searchField.activeFocus
       onCloseRequested: root.close()
       onTabRequested: function(direction) { root.switchPanel(direction) }
 
@@ -109,7 +124,7 @@ Panel {
           RowLayout {
             Layout.fillWidth: true
             Text {
-              text: seerrApi.authenticated ? "TV REQUESTS" : "SEERR SETUP"
+              text: seerrApi.authenticated ? "Seerr Requests" : "SEERR SETUP"
               color: Color.popups.text
               font.family: root.fontFamily
               font.pixelSize: Style.font.caption
@@ -132,9 +147,8 @@ Panel {
             }
           }
           Text {
-            visible: root.showSettings && seerrApi.authenticated
-            text: "Signed in" + (seerrApi.user && seerrApi.user.email ? " as " + seerrApi.user.email : "")
-              + ". Session lasts only while the shell is running; sign in again after a restart. Use HTTPS remotely."
+            visible: root.showSettings && seerrApi.authenticated && seerrApi.authMode === "apiKey"
+            text: "API key is saved in the desktop keyring. Unlock your login keyring after reboot."
             color: Color.muted
             font.family: root.fontFamily
             font.pixelSize: Style.font.bodySmall
@@ -145,7 +159,7 @@ Panel {
             visible: root.showSettings && seerrApi.authenticated
             text: "Sign out"
             fontSize: Style.font.bodySmall
-            onClicked: { seerrApi.logout(); root.showSettings = false }
+            onClicked: { seerrApi.logout(); apiKeyField.text = ""; root.showSettings = false }
           }
 
           ColumnLayout {
@@ -153,7 +167,7 @@ Panel {
             Layout.fillWidth: true
             spacing: Style.spacing.md
             Text {
-              text: "Connect to your Seerr server to browse and request TV shows."
+              text: "Sign in with a Seerr API key."
               color: Color.muted
               font.family: root.fontFamily
               font.pixelSize: Style.font.bodySmall
@@ -168,27 +182,42 @@ Panel {
               onTextChanged: if (!activeFocus && text !== seerrApi.serverUrl) text = seerrApi.serverUrl
             }
             TextField {
-              id: emailField
+              id: apiKeyField
               Layout.fillWidth: true
-              placeholderText: "Email"
-              inputMethodHints: Qt.ImhEmailCharactersOnly
-            }
-            TextField {
-              id: passwordField
-              Layout.fillWidth: true
-              placeholderText: "Password"
-              echoMode: TextInput.Password
+              placeholderText: "Seerr API key"
+              password: true
               Keys.onReturnPressed: loginButton.clicked()
               Keys.onEnterPressed: loginButton.clicked()
+            }
+            Text {
+              text: "Create an API key in Seerr Settings → General. It grants broad server API access and will be saved in your unlocked desktop keyring."
+              color: Color.muted
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.bodySmall
+              wrapMode: Text.Wrap
+              Layout.fillWidth: true
+            }
+            Text {
+              text: "Seerr API key documentation ↗"
+              color: Color.accent
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.bodySmall
+              font.underline: true
+              Layout.fillWidth: true
+              MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: Qt.openUrlExternally("https://docs.seerr.dev/api/seerr-api/")
+              }
             }
             Button {
               id: loginButton
               Layout.fillWidth: true
-              text: seerrApi.busy ? "Signing in…" : "Sign in"
-              enabled: !seerrApi.busy && loginUrl.text.trim() !== "" && emailField.text.trim() !== "" && passwordField.text !== ""
+              text: seerrApi.busy ? "Signing in…" : "Sign in and save key"
+              enabled: !seerrApi.busy && loginUrl.text.trim() !== "" && apiKeyField.text.trim() !== ""
               onClicked: {
-                seerrApi.login(loginUrl.text.trim(), emailField.text.trim(), passwordField.text)
-                passwordField.text = ""
+                seerrApi.loginWithApiKey(loginUrl.text.trim(), apiKeyField.text)
+                apiKeyField.text = ""
               }
             }
           }
@@ -209,10 +238,16 @@ Panel {
             TextField {
               id: searchField
               Layout.fillWidth: true
-              placeholderText: "Search TV shows"
+              placeholderText: "Search TV shows and movies"
               onTextChanged: searchDebounce.restart()
               Keys.onReturnPressed: root.submitSearch()
               Keys.onEnterPressed: root.submitSearch()
+              Keys.onDownPressed: { root.selectedResultIndex = -1; root.moveResultSelection(1); event.accepted = true }
+              Keys.onTabPressed: function(event) {
+                if (!event.modifiers && resultButtons.count > 0) { root.selectedResultIndex = -1; root.moveResultSelection(1); event.accepted = true }
+              }
+              Keys.onEscapePressed: { root.close(); event.accepted = true }
+              onActiveFocusChanged: if (activeFocus) { root.focusResults = false; root.selectedResultIndex = -1 }
             }
             Button {
               text: "Search"
@@ -220,25 +255,16 @@ Panel {
               onClicked: root.submitSearch()
             }
           }
+          Item { Layout.preferredHeight: Style.spacing.sm; visible: seerrApi.authenticated && !root.showSettings }
           Timer {
             id: searchDebounce
             interval: 350
             onTriggered: root.submitSearch()
           }
 
-
-          Text {
-            visible: seerrApi.busy && (!seerrApi.authenticated || seerrApi.requests.length === 0)
-            text: "Loading…"
-            color: Color.muted
-            font.family: root.fontFamily
-            font.pixelSize: Style.font.bodySmall
-            Layout.fillWidth: true
-          }
-
           Text {
             visible: seerrApi.authenticated && !root.showSettings && root.searchText === "" && !seerrApi.busy && seerrApi.requests.length === 0 && seerrApi.error === ""
-            text: "No TV requests yet. Search for a show to get started."
+            text: "No requests yet. Search for a show or movie to get started."
             color: Color.muted
             font.family: root.fontFamily
             font.pixelSize: Style.font.bodySmall
@@ -262,15 +288,17 @@ Panel {
           }
           Text {
             visible: seerrApi.authenticated && !root.showSettings && root.searchText !== "" && seerrApi.searchResults.length === 0 && !seerrApi.busy && seerrApi.error === ""
-            text: "No TV shows found."
+            text: "No matching TV shows or movies found."
             color: Color.muted
             font.family: root.fontFamily
             font.pixelSize: Style.font.bodySmall
             Layout.fillWidth: true
           }
           Repeater {
+            id: resultButtons
             model: seerrApi.authenticated && !root.showSettings && root.searchText !== "" ? seerrApi.searchResults : []
             delegate: searchRow
+            onCountChanged: { root.selectedResultIndex = -1; root.focusResults = false }
           }
         }
       }
@@ -283,11 +311,30 @@ Panel {
       required property var modelData
       Layout.fillWidth: true
       spacing: Style.spacing.md
+      Item {
+        Layout.preferredWidth: Style.space(48)
+        Layout.preferredHeight: Style.space(72)
+        Image {
+          anchors.fill: parent
+          source: modelData.posterUrl || ""
+          visible: source.toString() !== ""
+          fillMode: Image.PreserveAspectCrop
+          sourceSize.width: Style.space(48)
+          sourceSize.height: Style.space(72)
+        }
+        Rectangle {
+          anchors.fill: parent
+          visible: !modelData.posterUrl
+          color: Color.popups.background
+          radius: Style.radius.sm
+          Text { anchors.centerIn: parent; text: "▧"; color: Color.muted; font.pixelSize: Style.font.title }
+        }
+      }
       ColumnLayout {
         Layout.fillWidth: true
         spacing: Style.spacing.xxs
         Text {
-          text: modelData.title || modelData.name || (modelData.mediaInfo || modelData.media || {}).title || (modelData.mediaInfo || modelData.media || {}).name || ((modelData.mediaInfo || modelData.media || {}).tmdbId ? "TV show #" + (modelData.mediaInfo || modelData.media || {}).tmdbId : "TV show")
+          text: root.requestTitle(modelData)
           color: Color.popups.text
           font.family: root.fontFamily
           font.pixelSize: Style.font.body
@@ -295,10 +342,12 @@ Panel {
           Layout.fillWidth: true
         }
         Text {
-          text: root.requestStatusLabel(modelData)
-          color: Number((modelData.mediaInfo || modelData.media || {}).status) === 5 ? Color.accent : Color.muted
+          text: (root.requestYear(modelData) ? root.requestYear(modelData) + " · " : "") + root.resultType(modelData).toUpperCase() + " · " + root.requestStatusLabel(modelData)
+          color: Color.muted
           font.family: root.fontFamily
           font.pixelSize: Style.font.bodySmall
+          elide: Text.ElideRight
+          Layout.fillWidth: true
         }
       }
     }
@@ -310,11 +359,30 @@ Panel {
       required property var modelData
       Layout.fillWidth: true
       spacing: Style.spacing.md
+      Item {
+        Layout.preferredWidth: Style.space(48)
+        Layout.preferredHeight: Style.space(72)
+        Image {
+          anchors.fill: parent
+          source: modelData.posterUrl || ""
+          visible: source.toString() !== ""
+          fillMode: Image.PreserveAspectCrop
+          sourceSize.width: Style.space(48)
+          sourceSize.height: Style.space(72)
+        }
+        Rectangle {
+          anchors.fill: parent
+          visible: !modelData.posterUrl
+          color: Color.popups.background
+          radius: Style.radius.sm
+          Text { anchors.centerIn: parent; text: "▧"; color: Color.muted; font.pixelSize: Style.font.title }
+        }
+      }
       ColumnLayout {
         Layout.fillWidth: true
         spacing: Style.spacing.xxs
         Text {
-          text: modelData.name || modelData.title || "Untitled"
+          text: root.resultTitle(modelData)
           color: Color.popups.text
           font.family: root.fontFamily
           font.pixelSize: Style.font.body
@@ -322,12 +390,8 @@ Panel {
           Layout.fillWidth: true
         }
         Text {
-          text: {
-            var media = modelData.mediaInfo || modelData.media || {}
-            return root.isRequested(modelData) ? "Already requested · " + root.mediaStatusLabel(media.status)
-              : (modelData.firstAirDate ? String(modelData.firstAirDate).slice(0, 4) : "TV show")
-          }
-          color: root.isRequested(modelData) && Number((modelData.mediaInfo || modelData.media || {}).status) === 5 ? Color.accent : Color.muted
+          text: (root.resultYear(modelData) ? root.resultYear(modelData) + " · " : "") + root.resultType(modelData).toUpperCase() + " · " + root.requestStatusLabel(modelData)
+          color: Color.muted
           font.family: root.fontFamily
           font.pixelSize: Style.font.bodySmall
           elide: Text.ElideRight
@@ -335,15 +399,33 @@ Panel {
         }
       }
       Button {
-        text: root.isRequested(modelData) ? root.mediaStatusLabel((modelData.mediaInfo || modelData.media || {}).status) : (seerrApi.busy ? "…" : (Number((modelData.mediaInfo || modelData.media || {}).status || 0) >= 2 ? root.mediaStatusLabel((modelData.mediaInfo || modelData.media || {}).status) : "Request"))
-        enabled: !root.isRequested(modelData) && !seerrApi.busy && Number((modelData.mediaInfo || modelData.media || {}).status || 0) < 2
-        onClicked: seerrApi.requestShow(Number(modelData.id))
+        id: requestButton
+        property int resultIndex: index
+        selected: root.selectedResultIndex === resultIndex
+        text: modelData.alreadyRequested ? (modelData.statusLabel || "Requested") : (seerrApi.busy ? "…" : "Request")
+        enabled: !modelData.alreadyRequested && !seerrApi.busy
+        onClicked: seerrApi.requestMedia(root.resultType(modelData), Number(modelData.id || modelData.tmdbId))
+        Keys.onDownPressed: { root.moveResultSelection(1); event.accepted = true }
+        Keys.onUpPressed: { root.moveResultSelection(-1); event.accepted = true }
+        Keys.onTabPressed: function(event) {
+          if (!event.modifiers) {
+            if (resultIndex + 1 < resultButtons.count) root.moveResultSelection(1)
+            else searchField.forceActiveFocus()
+            event.accepted = true
+          }
+        }
+        Keys.onBacktabPressed: function(event) {
+          if (resultIndex > 0) root.moveResultSelection(-1)
+          else searchField.forceActiveFocus()
+          event.accepted = true
+        }
+        onActiveFocusChanged: if (activeFocus) { root.focusResults = true; root.selectedResultIndex = resultIndex }
       }
     }
   }
 
   onOpenedChanged: {
     if (!opened) return
-    Qt.callLater(function() { if (opened) keyCatcher.forceActiveFocus() })
+    Qt.callLater(function() { if (opened && seerrApi.authenticated && !showSettings) searchField.forceActiveFocus() })
   }
 }

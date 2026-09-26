@@ -54,8 +54,8 @@ BarWidget {
     id: button
     anchors.fill: parent
     bar: root.bar
-    text: "TV"
-    tooltipText: "Quick Seerr request"
+    text: ""
+    tooltipText: "Quick Seerr requests"
     onPressed: function(buttonCode) {
       if (buttonCode === Qt.LeftButton) root.toggle()
     }
