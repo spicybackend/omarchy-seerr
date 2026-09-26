@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "io.github.omarchy-seerr.plugin",
+  "name": "Seerr Quick Requests",
+  "version": "1.0.0",
+  "license": "MIT",
+  "description": "Search and request TV shows from Seerr in the Omarchy bar.",
+  "kinds": ["bar-widget"],
+  "entryPoints": {"barWidget": "BarWidget.qml"},
+  "barWidget": {
+    "displayName": "Seerr",
+    "category": "Media",
+    "allowMultiple": false,
+    "defaultSection": "center"
+  }
+}
