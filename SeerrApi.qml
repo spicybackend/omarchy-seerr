@@ -1,5 +1,6 @@
 import QtQuick
 import Quickshell
+import Quickshell.Io
 
 QtObject {
     id: api
@@ -19,10 +20,10 @@ QtObject {
     property string _operation: ""
     property var _xhr: null
 
-    FileView {
-        id: configFile
+    property FileView configFile: FileView {
         path: Quickshell.env("HOME") + "/.config/omarchy/seerr-quick-requests.json"
         watchChanges: false
+        printErrors: false
     }
 
     function _baseUrl(value) {
