@@ -201,6 +201,7 @@ QtObject {
         var requested = Number(mediaInfo.status) >= 2 && Number(mediaInfo.status) <= 5 || (mediaInfo.requests || []).length > 0
         var releaseDate = date ? new Date(date) : null
         var isReleased = releaseDate ? releaseDate <= new Date() : true
+        var existingRequest = (mediaInfo.requests && mediaInfo.requests[0]) || {}
         var normalized = Object.assign({}, item, {
             mediaType: type,
             title: String(title || "Unknown title"),
@@ -208,6 +209,8 @@ QtObject {
             posterUrl: item.posterPath ? "https://image.tmdb.org/t/p/w185/" + String(item.posterPath).replace(/^\/+/, "") : "",
             alreadyRequested: requestItem ? true : requested,
             status: Number(mediaInfo.status),
+            requestId: Number(existingRequest.id) || 0,
+            requestedSeasons: Array.isArray(existingRequest.seasons) ? existingRequest.seasons : [],
             statusLabel: requestItem ? _requestStatus(mediaInfo, isReleased) : (requested ? _statusLabel(mediaInfo, isReleased) : "Not requested")
         })
         return normalized
@@ -518,11 +521,22 @@ QtObject {
         })
     }
 
-    function requestMedia(mediaType, tmdbId, seasons) {
+    function requestMedia(mediaType, tmdbId, seasons, requestId, requestedSeasons) {
         var type = String(mediaType || "")
         var id = Number(tmdbId)
         if (!authenticated || (type !== "movie" && type !== "tv") || !isFinite(id) || id <= 0) {
             error = "Choose a valid movie or TV show to request."
+            return
+        }
+        var rid = Number(requestId) || 0
+        if (rid > 0 && type === "tv") {
+            var existing = Array.isArray(requestedSeasons) ? requestedSeasons : []
+            var selected = Array.isArray(seasons) ? seasons : []
+            var merged = existing.concat(selected).filter(function(v, i, a) { return a.indexOf(v) === i })
+            _send("PUT", "/request/" + rid, { seasons: merged.length ? merged : "all" }, "update", function(data) {
+                requestSucceeded(type, id, data)
+                refreshRequests()
+            })
             return
         }
         if (_isRequested(type, id)) { error = "This " + type + " already has a request."; return }
@@ -599,7 +613,7 @@ QtObject {
                                    var sn = Number(s.seasonNumber)
                                    return { seasonNumber: sn, name: String(s.name || ""), available: !!availableMap[sn] }
                                })
-                               .sort(function(a, b) { return a.seasonNumber - b.seasonNumber }))
+                               .sort(function(a, b) { return b.seasonNumber - a.seasonNumber }))
         }, function() { if (callback) callback([]) }, true)
     }
 

@@ -21,6 +21,8 @@ Panel {
   property int selectedResultIndex: -1
   property int deletingRequestId: 0
   property int seasonPickerTmdbId: 0
+  property int seasonPickerRequestId: 0
+  property var seasonPickerRequestedSeasons: []
   property var seasonPickerOptions: []
   property var seasonPickerSelected: []
 
@@ -31,8 +33,10 @@ Panel {
     var id = Number(result.id || result.tmdbId)
     if (type !== "tv") { seerrApi.requestMedia(type, id); return }
     seerrApi.fetchTvSeasons(id, function(seasons) {
-      if (!seasons.length) { seerrApi.requestMedia("tv", id, ["all"]); return }
+      if (!seasons.length) { seerrApi.requestMedia("tv", id, ["all"], result.requestId, result.requestedSeasons); return }
       root.seasonPickerTmdbId = id
+      root.seasonPickerRequestId = Number(result.requestId) || 0
+      root.seasonPickerRequestedSeasons = Array.isArray(result.requestedSeasons) ? result.requestedSeasons : []
       root.seasonPickerOptions = seasons
       root.seasonPickerSelected = seasons.filter(function(s) { return s.available })
                                          .map(function(s) { return s.seasonNumber })
@@ -52,9 +56,9 @@ Panel {
     if (mode === "all") {
       root.seasonPickerSelected = root.seasonPickerOptions.map(function(s) { return s.seasonNumber })
     } else if (mode === "first") {
-      root.seasonPickerSelected = [root.seasonPickerOptions[0].seasonNumber]
-    } else if (mode === "latest") {
       root.seasonPickerSelected = [root.seasonPickerOptions[root.seasonPickerOptions.length - 1].seasonNumber]
+    } else if (mode === "latest") {
+      root.seasonPickerSelected = [root.seasonPickerOptions[0].seasonNumber]
     }
   }
 
@@ -254,17 +258,21 @@ Panel {
               text: "Cancel"
               onClicked: {
                 root.seasonPickerTmdbId = 0
+                root.seasonPickerRequestId = 0
+                root.seasonPickerRequestedSeasons = []
                 root.seasonPickerOptions = []
                 root.seasonPickerSelected = []
               }
             }
             Button {
               Layout.fillWidth: true
-              text: "Request"
+              text: root.seasonPickerRequestId > 0 ? "Update request" : "Request"
               enabled: root.seasonPickerSelected.length > 0
               onClicked: {
-                seerrApi.requestMedia("tv", root.seasonPickerTmdbId, root.seasonPickerSelected)
+                seerrApi.requestMedia("tv", root.seasonPickerTmdbId, root.seasonPickerSelected, root.seasonPickerRequestId, root.seasonPickerRequestedSeasons)
                 root.seasonPickerTmdbId = 0
+                root.seasonPickerRequestId = 0
+                root.seasonPickerRequestedSeasons = []
                 root.seasonPickerOptions = []
                 root.seasonPickerSelected = []
               }
