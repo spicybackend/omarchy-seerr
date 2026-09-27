@@ -128,7 +128,7 @@ Panel {
     switch (Number(status)) {
     case 5: return "Available"
     case 4: return "Partially available"
-    case 3: return "Processing"
+    case 3: return "Requested"
     case 2: return "Pending"
     case 1: return "Unknown"
     case 6: return "Unavailable"
@@ -390,15 +390,6 @@ Panel {
               selected: root.showSettings
               onClicked: root.showSettings = !root.showSettings
             }
-          }
-          Text {
-            visible: root.showSettings && seerrApi.authenticated && seerrApi.authMode === "keyring"
-            text: "API key is saved in the desktop keyring. Unlock your login keyring after reboot."
-            color: Color.muted
-            font.family: root.fontFamily
-            font.pixelSize: Style.font.bodySmall
-            wrapMode: Text.Wrap
-            Layout.fillWidth: true
           }
           Button {
             visible: root.showSettings && seerrApi.authenticated

@@ -194,7 +194,7 @@ QtObject {
         var status = Number(mediaInfo && mediaInfo.status)
         if (status === 5) return "Available"
         if (status === 4) return "Partially available"
-        if (status === 3) return "Processing"
+        if (status === 3) return "Requested"
         if (status === 2) return "Pending"
         return "Not requested"
     }
@@ -227,7 +227,7 @@ QtObject {
         var status = Number(mediaInfo && mediaInfo.status)
         if (status === 5) return "Available"
         if (status === 4) return "Partially available"
-        if (status === 3) return "Processing"
+        if (status === 3) return "Requested"
         if (status === 2) return "Pending"
         return "Requested"
     }
