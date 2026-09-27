@@ -60,17 +60,15 @@ QtObject {
     }
     property FileView configFile: FileView {
         path: Quickshell.env("HOME") + "/.config/omarchy/seerr-quick-requests/config.json"
-        watchChanges: false
+        watchChanges: true
         printErrors: false
     }
     property var requests: []
 
-    property string _operation: ""
     property var _xhr: null
     property var _lookupCache: ({})
     property var _detailXhrs: []
     property var _pendingKeyCallback: null
-
 
     function _baseUrl(value) {
         var url = String(value || "").trim().replace(/\/+$/, "")
@@ -101,9 +99,7 @@ QtObject {
     function _fail(message) {
         busy = false
         error = message
-        _operation = ""
         _xhr = null
-        _requestCallback = null
     }
 
 
@@ -140,7 +136,6 @@ QtObject {
         var callback = _pendingKeyCallback
         _pendingKeyCallback = null
         if (action === "store") _pendingKey = ""
-        if (action !== "store" && authMode !== "apiKey") _apiKey = ""
         if (callback) callback(keyringAvailable, action === "lookup" && code === 0 ? output : "")
     }
     function _secretProcessFailed() {
@@ -391,11 +386,12 @@ QtObject {
     }
 
     function loginWithApiKey(url, apiKey) {
-        if (busy) { error = "Please wait for the current request to finish."; return }
+        if (busy) { error = "Please wait for the current request to finish."; keyVerificationFinished(error); return }
         var key = String(apiKey || "").trim()
-        if (!key) { error = "Enter a Seerr API key."; return }
-        try { serverUrl = _baseUrl(url) } catch (e) { error = String(e.message || e); return }
-        _writeConfig({ serverUrl: serverUrl }, function(ok) {
+        if (!key) { error = "Enter a Seerr API key."; keyVerificationFinished(error); return }
+        var validatedUrl
+        try { validatedUrl = _baseUrl(url) } catch (e) { error = String(e.message || e); keyVerificationFinished(error); return }
+        _writeConfig({ serverUrl: validatedUrl }, function(ok) {
             if (!ok) { error = "Could not write the instance URL safely."; keyVerificationFinished(error); return }
             api._verifyApiKey(key, "choice")
         })
@@ -411,6 +407,7 @@ QtObject {
             if (!data) {
                 _apiKey = ""
                 error = "Seerr API key did not return a signed-in user."
+                keyVerificationFinished(error)
                 return
             }
             user = data
@@ -423,6 +420,7 @@ QtObject {
             } else {
                 authMode = storage
                 authenticated = true
+                keyVerificationFinished("verified")
                 refreshRequests()
             }
         }, function() {

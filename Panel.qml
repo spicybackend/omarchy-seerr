@@ -16,6 +16,7 @@ Panel {
   property alias api: seerrApi
   property bool sendingKey: false
   property bool showSettings: false
+  property bool popoutSwitchClosing: false
   property string searchText: ""
   property int selectedResultIndex: -1
 
@@ -152,7 +153,7 @@ Panel {
             }
           }
           Text {
-            visible: root.showSettings && seerrApi.authenticated && seerrApi.authMode === "apiKey"
+            visible: root.showSettings && seerrApi.authenticated && seerrApi.authMode === "keyring"
             text: "API key is saved in the desktop keyring. Unlock your login keyring after reboot."
             color: Color.muted
             font.family: root.fontFamily
