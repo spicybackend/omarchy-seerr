@@ -205,7 +205,7 @@ QtObject {
             mediaType: type,
             title: String(title || "Unknown title"),
             year: _year(date),
-            posterUrl: item.posterPath ? "https://image.tmdb.org/t/p/w92/" + String(item.posterPath).replace(/^\/+/, "") : "",
+            posterUrl: item.posterPath ? "https://image.tmdb.org/t/p/w185/" + String(item.posterPath).replace(/^\/+/, "") : "",
             alreadyRequested: requestItem ? true : requested,
             statusLabel: requestItem ? _requestStatus(mediaInfo, isReleased) : (requested ? _statusLabel(mediaInfo, isReleased) : "Not requested")
         })
