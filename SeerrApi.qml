@@ -174,6 +174,12 @@ QtObject {
         return match ? Number(match[1]) : null
     }
 
+    function _seasonNumbers(seasons) {
+        if (!Array.isArray(seasons)) return []
+        return seasons.map(function(s) { return typeof s === "number" ? s : Number(s.seasonNumber) })
+                       .filter(function(n) { return isFinite(n) })
+    }
+
     function _isReleased(date) {
         if (!date) return true
         var d = new Date(date)
@@ -210,7 +216,7 @@ QtObject {
             alreadyRequested: requestItem ? true : requested,
             status: Number(mediaInfo.status),
             requestId: existingRequestId,
-            requestedSeasons: Array.isArray(existingRequest.seasons) && existingRequest.seasons.length ? existingRequest.seasons : (Array.isArray(item.requestedSeasons) ? item.requestedSeasons : []),
+            requestedSeasons: _seasonNumbers(existingRequest.seasons).length ? _seasonNumbers(existingRequest.seasons) : _seasonNumbers(item.requestedSeasons),
             statusLabel: requestItem ? _requestStatus(mediaInfo, isReleased) : (requested ? _statusLabel(mediaInfo, isReleased) : "Not requested")
         })
         return normalized
@@ -240,6 +246,7 @@ QtObject {
             id: id,
             tmdbId: id,
             requestId: Number(item.id) || 0,
+            requestedSeasons: _seasonNumbers(item.seasons),
             mediaType: type,
             mediaInfo: mediaInfo,
             title: info.title || info.name || (cached && cached.title) || item.title || item.name || "",
@@ -265,7 +272,7 @@ QtObject {
         var info = request && request.mediaInfo ? request.mediaInfo : (request && request.media ? request.media : {})
         var newStatus = Number(info.status) || 2
         var newRequestId = Number(request && request.id) || 0
-        var newRequestedSeasons = request && Array.isArray(request.seasons) ? request.seasons : []
+        var newRequestedSeasons = _seasonNumbers(request && request.seasons)
         for (var i = 0; i < searchResults.length; ++i) {
             var r = searchResults[i]
             if (r.mediaType === type && Number(r.id) === id) {
