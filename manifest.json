@@ -4,7 +4,9 @@
   "name": "Seerr Quick Requests",
   "version": "1.0.0",
   "license": "MIT",
-  "description": "Search and request TV shows from Seerr in the Omarchy bar.",
+  "author": "spicybackend",
+  "homepage": "https://github.com/spicybackend/omarchy-seerr",
+  "description": "Search and request TV shows and movies from Seerr in the Omarchy bar.",
   "kinds": ["bar-widget"],
   "entryPoints": {"barWidget": "BarWidget.qml"},
   "barWidget": {
