@@ -5,6 +5,7 @@ import Quickshell.Io
 QtObject {
     id: api
     signal requestSucceeded(string mediaType, int tmdbId, var request)
+    signal keyVerificationFinished(string result)
     property string authMode: "session"
     property bool keyringAvailable: false
     property var _apiKey: ""
@@ -395,7 +396,7 @@ QtObject {
         if (!key) { error = "Enter a Seerr API key."; return }
         try { serverUrl = _baseUrl(url) } catch (e) { error = String(e.message || e); return }
         _writeConfig({ serverUrl: serverUrl }, function(ok) {
-            if (!ok) { error = "Could not write the instance URL safely."; return }
+            if (!ok) { error = "Could not write the instance URL safely."; keyVerificationFinished(error); return }
             api._verifyApiKey(key, "choice")
         })
     }
@@ -418,6 +419,7 @@ QtObject {
                 awaitingKeyStorageChoice = true
                 authMode = "choice"
                 error = "API key verified. Choose whether and where to save it."
+                keyVerificationFinished("verified")
             } else {
                 authMode = storage
                 authenticated = true
@@ -426,6 +428,7 @@ QtObject {
         }, function() {
             _apiKey = ""
             error = "The API key was rejected or /auth/me did not return a user."
+            keyVerificationFinished(error)
         })
     }
 

@@ -14,9 +14,11 @@ Panel {
   property var hostWidget: null
   readonly property var barIdentity: hostWidget || root
   property alias api: seerrApi
+  property bool sendingKey: false
   property bool showSettings: false
   property string searchText: ""
   property int selectedResultIndex: -1
+
   property bool focusResults: false
   property bool confirmingKeyStorage: false
 
@@ -88,6 +90,7 @@ Panel {
       if (seerrApi.authenticated && root.opened && !root.showSettings)
         Qt.callLater(function() { if (root.opened && !root.showSettings) searchField.forceActiveFocus() })
     }
+    function onKeyVerificationFinished(result) { root.sendingKey = false }
   }
 
   SeerrApi { id: seerrApi }
@@ -215,9 +218,10 @@ Panel {
             Button {
               id: loginButton
               Layout.fillWidth: true
-              text: seerrApi.busy ? "Signing in…" : "Sign in"
-              enabled: !seerrApi.busy && loginUrl.text.trim() !== "" && apiKeyField.text.trim() !== ""
+              text: root.sendingKey ? "Signing in…" : "Sign in"
+              enabled: !root.sendingKey && !seerrApi.busy && loginUrl.text.trim() !== "" && apiKeyField.text.trim() !== ""
               onClicked: {
+                root.sendingKey = true
                 seerrApi.loginWithApiKey(loginUrl.text.trim(), apiKeyField.text)
                 apiKeyField.text = ""
               }
@@ -226,8 +230,10 @@ Panel {
 
           ColumnLayout {
             visible: seerrApi.awaitingKeyStorageChoice
+            onVisibleChanged: if (visible) root.sendingKey = false
             Layout.fillWidth: true
             spacing: Style.spacing.sm
+            Component.onCompleted: if (visible) root.sendingKey = false
             Text {
               text: "Save this verified API key? Plain-text storage is readable by local processes and users who can read your config file."
               color: Color.muted
