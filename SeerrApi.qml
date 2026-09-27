@@ -131,6 +131,7 @@ QtObject {
         _pendingKeyCallback = callback
         _pendingKey = action === "store" ? String(secret || "") : ""
         console.log("Seerr keyring starting " + action)
+        _secretProcess.stdinEnabled = true
         _secretProcess.running = true
         return true
     }
