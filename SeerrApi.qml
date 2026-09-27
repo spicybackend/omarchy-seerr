@@ -73,6 +73,7 @@ QtObject {
     property var _lookupCache: ({})
     property var _detailXhrs: []
     property var _pendingKeyCallback: null
+    property var _queuedSecretAction: null
 
     function _baseUrl(value) {
         var url = String(value || "").trim().replace(/\/+$/, "")
@@ -117,8 +118,9 @@ QtObject {
 
     function _startSecret(action, base, secret, callback) {
         if (_secretProcess.running) {
-            if (callback) callback(false, "The keyring helper is busy.")
-            return false
+            _queuedSecretAction = { action: action, base: base, secret: secret, callback: callback }
+            console.log("Seerr keyring queued " + action + " (busy)")
+            return true
         }
         try {
             _keyringOrigin = new URL(_baseUrl(base)).origin.toLowerCase()
@@ -128,6 +130,7 @@ QtObject {
         _keyringOutput = ""
         _pendingKeyCallback = callback
         _pendingKey = action === "store" ? String(secret || "") : ""
+        console.log("Seerr keyring starting " + action)
         _secretProcess.running = true
         return true
     }
@@ -142,6 +145,13 @@ QtObject {
         _pendingKeyCallback = null
         if (action === "store") _pendingKey = ""
         if (callback) callback(keyringAvailable, action === "lookup" && code === 0 ? output : "")
+        var queued = _queuedSecretAction
+        _queuedSecretAction = null
+        if (queued) {
+            Qt.callLater(function() {
+                api._startSecret(queued.action, queued.base, queued.secret, queued.callback)
+            })
+        }
     }
     function _secretProcessFailed() {
         var action = _pendingKeyOperation
@@ -470,6 +480,7 @@ QtObject {
         authMode = mode
         authenticated = true
         awaitingKeyStorageChoice = false
+        error = ""
         if (mode === "session") _apiKey = _verifiedKeyForChoice
         _verifiedKeyForChoice = ""
         refreshRequests()
