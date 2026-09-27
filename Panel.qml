@@ -19,6 +19,7 @@ Panel {
   property bool popoutSwitchClosing: false
   property string searchText: ""
   property int selectedResultIndex: -1
+  property int deletingRequestId: 0
 
   property bool focusResults: false
 
@@ -109,9 +110,30 @@ Panel {
     PanelKeyCatcher {
       id: keyCatcher
       anchors.fill: parent
-      blocked: loginUrl.activeFocus || apiKeyField.activeFocus || searchField.activeFocus
+      blocked: loginUrl.activeFocus || apiKeyField.activeFocus || searchField.activeFocus || root.deletingRequestId !== 0
       onCloseRequested: root.close()
       onTabRequested: function(direction) { root.switchPanel(direction) }
+
+      ConfirmDialog {
+        anchors.fill: parent
+        z: 20
+        focus: true
+        opened: root.deletingRequestId !== 0
+        message: "Remove this request from Seerr? This does not delete downloaded files."
+        cancelText: "Cancel"
+        confirmText: "Remove"
+        onOpenedChanged: if (opened) forceActiveFocus()
+        Keys.onPressed: function(event) { if (handleKey(event)) event.accepted = true }
+        onCanceled: {
+          root.deletingRequestId = 0
+          Qt.callLater(function() { if (root.opened) keyCatcher.forceActiveFocus() })
+        }
+        onConfirmed: {
+          seerrApi.deleteRequest(root.deletingRequestId)
+          root.deletingRequestId = 0
+          Qt.callLater(function() { if (root.opened) keyCatcher.forceActiveFocus() })
+        }
+      }
 
       Flickable {
         anchors.fill: parent
@@ -154,6 +176,31 @@ Panel {
           Text {
             visible: root.showSettings && seerrApi.authenticated && seerrApi.authMode === "keyring"
             text: "API key is saved in the desktop keyring. Unlock your login keyring after reboot."
+            color: Color.muted
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.bodySmall
+            wrapMode: Text.Wrap
+            Layout.fillWidth: true
+          }
+          Dropdown {
+            visible: root.showSettings && seerrApi.authenticated && seerrApi.movieProfiles.length > 0
+            Layout.fillWidth: true
+            label: "Movie quality profile"
+            value: String(seerrApi.movieProfileId)
+            options: seerrApi.movieProfiles
+            onChanged: seerrApi.setMovieProfile(value)
+          }
+          Dropdown {
+            visible: root.showSettings && seerrApi.authenticated && seerrApi.tvProfiles.length > 0
+            Layout.fillWidth: true
+            label: "TV quality profile"
+            value: String(seerrApi.tvProfileId)
+            options: seerrApi.tvProfiles
+            onChanged: seerrApi.setTvProfile(value)
+          }
+          Text {
+            visible: root.showSettings && seerrApi.authenticated && seerrApi.movieProfiles.length === 0 && seerrApi.tvProfiles.length === 0 && !seerrApi.busy
+            text: "Quality profiles unavailable. The API key may need permission to read Seerr settings."
             color: Color.muted
             font.family: root.fontFamily
             font.pixelSize: Style.font.bodySmall
@@ -388,6 +435,12 @@ Panel {
           elide: Text.ElideRight
           Layout.fillWidth: true
         }
+      }
+      Button {
+        text: "Remove"
+        fontSize: Style.font.bodySmall
+        foreground: Color.urgent
+        onClicked: root.deletingRequestId = Number(modelData.requestId || 0)
       }
     }
   }

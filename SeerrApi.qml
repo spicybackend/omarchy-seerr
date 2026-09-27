@@ -33,7 +33,17 @@ QtObject {
         try { return JSON.parse(configFile.text() || "{}").serverUrl || "" }
         catch (e) { return "" }
     }
+    property int movieProfileId: {
+        try { return JSON.parse(configFile.text() || "{}").movieProfileId || 0 }
+        catch (e) { return 0 }
+    }
+    property int tvProfileId: {
+        try { return JSON.parse(configFile.text() || "{}").tvProfileId || 0 }
+        catch (e) { return 0 }
+    }
     property bool authenticated: false
+    property var movieProfiles: []
+    property var tvProfiles: []
     property var user: null
     property bool busy: false
     property string error: ""
@@ -173,7 +183,8 @@ QtObject {
         return match ? Number(match[1]) : null
     }
 
-    function _statusLabel(mediaInfo) {
+    function _statusLabel(mediaInfo, isReleased) {
+        if (isReleased === false) return "Not yet released"
         var status = Number(mediaInfo && mediaInfo.status)
         if (status === 5) return "Available"
         if (status === 4) return "Partially available"
@@ -188,18 +199,21 @@ QtObject {
         var date = type === "movie" ? (item.releaseDate || item.release_date) : (item.firstAirDate || item.first_air_date)
         var mediaInfo = item.mediaInfo || item.media || {}
         var requested = Number(mediaInfo.status) >= 2 && Number(mediaInfo.status) <= 5 || (mediaInfo.requests || []).length > 0
+        var releaseDate = date ? new Date(date) : null
+        var isReleased = releaseDate ? releaseDate <= new Date() : true
         var normalized = Object.assign({}, item, {
             mediaType: type,
             title: String(title || "Unknown title"),
             year: _year(date),
             posterUrl: item.posterPath ? "https://image.tmdb.org/t/p/w92/" + String(item.posterPath).replace(/^\/+/, "") : "",
             alreadyRequested: requestItem ? true : requested,
-            statusLabel: requestItem ? _requestStatus(mediaInfo) : (requested ? _statusLabel(mediaInfo) : "Not requested")
+            statusLabel: requestItem ? _requestStatus(mediaInfo, isReleased) : (requested ? _statusLabel(mediaInfo, isReleased) : "Not requested")
         })
         return normalized
     }
 
-    function _requestStatus(mediaInfo) {
+    function _requestStatus(mediaInfo, isReleased) {
+        if (isReleased === false) return "Not yet released"
         var status = Number(mediaInfo && mediaInfo.status)
         if (status === 5) return "Available"
         if (status === 4) return "Partially available"
@@ -221,6 +235,7 @@ QtObject {
         var enriched = Object.assign({}, cached || {}, info, {
             id: id,
             tmdbId: id,
+            requestId: Number(item.id) || 0,
             mediaType: type,
             mediaInfo: mediaInfo,
             title: info.title || info.name || (cached && cached.title) || item.title || item.name || "",
@@ -469,6 +484,7 @@ QtObject {
         error = ""
         if (mode === "session") _apiKey = _verifiedKeyForChoice
         _verifiedKeyForChoice = ""
+        _fetchQualityProfiles()
         refreshRequests()
     }
 
@@ -517,11 +533,65 @@ QtObject {
             }
         }
         var payload = { mediaType: type, mediaId: id }
-        if (type === "tv") payload.seasons = "all"
+        if (type === "tv") {
+            payload.seasons = "all"
+            if (tvProfileId > 0) payload.profileId = tvProfileId
+        } else {
+            if (movieProfileId > 0) payload.profileId = movieProfileId
+        }
         _send("POST", "/request", payload, "create", function(data) {
             if (data) requests = [_normalizeRequest(data)].concat(requests)
             requestSucceeded(type, id, data)
             refreshRequests()
+        })
+    }
+
+    function setMovieProfile(profileId) {
+        var id = Number(profileId) || 0
+        movieProfileId = id
+        _writeConfig({ serverUrl: serverUrl, movieProfileId: id, tvProfileId: tvProfileId }, function(ok) {
+            if (!ok) error = "Could not save the movie quality profile preference."
+        })
+    }
+
+    function setTvProfile(profileId) {
+        var id = Number(profileId) || 0
+        tvProfileId = id
+        _writeConfig({ serverUrl: serverUrl, movieProfileId: movieProfileId, tvProfileId: id }, function(ok) {
+            if (!ok) error = "Could not save the TV quality profile preference."
+        })
+    }
+
+    function _fetchQualityProfiles() {
+        if (!authenticated) return
+        _send("GET", "/settings/radarr", null, "profiles", function(data) {
+            var servers = data && Array.isArray(data) ? data : []
+            if (servers.length) {
+                _send("GET", "/settings/radarr/" + servers[0].id + "/profiles", null, "profiles", function(profileData) {
+                    var list = profileData && Array.isArray(profileData) ? profileData : []
+                    movieProfiles = list.map(function(p) { return { value: String(p.id), label: String(p.name) } })
+                })
+            }
+        }, null, true)
+        _send("GET", "/settings/sonarr", null, "profiles", function(data) {
+            var servers = data && Array.isArray(data) ? data : []
+            if (servers.length) {
+                _send("GET", "/settings/sonarr/" + servers[0].id + "/profiles", null, "profiles", function(profileData) {
+                    var list = profileData && Array.isArray(profileData) ? profileData : []
+                    tvProfiles = list.map(function(p) { return { value: String(p.id), label: String(p.name) } })
+                })
+            }
+        }, null, true)
+    }
+
+    function deleteRequest(requestId) {
+        var id = Number(requestId)
+        if (!authenticated || !isFinite(id) || id <= 0) {
+            error = "Cannot remove this request."
+            return
+        }
+        _send("DELETE", "/request/" + id, null, "delete", function() {
+            requests = requests.filter(function(row) { return Number(row.requestId) !== id })
         })
     }
 

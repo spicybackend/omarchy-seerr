@@ -63,8 +63,10 @@ On systems without a graphical keyring, use **Use this session only**.
 
 ## Included
 
-- Requested TV shows and movies, with request/availability status.
+- Requested TV shows and movies, with request/availability status (including "Not yet released" for upcoming titles).
 - Mixed TV/movie search, release year, poster thumbnails, and typed requests.
+- Per-request **Remove** button to delete the Seerr request record (does not delete downloaded files).
+- Settings for default movie and TV **quality profiles** (requires an API key with permission to read Seerr settings).
 - API-key persistence in the desktop keyring and saved instance URL.
 
 This is a third-party Omarchy Quattro plugin (`manifest.json` schema v1). Seerr enforces the key's permissions and quotas. Keyring persistence requires a working Secret Service and an unlocked login keyring after reboot.
