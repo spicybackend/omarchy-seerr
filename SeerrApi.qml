@@ -426,7 +426,7 @@ QtObject {
                 _verifiedKeyForChoice = key
                 awaitingKeyStorageChoice = true
                 authMode = "choice"
-                error = "API key verified. Choose whether and where to save it."
+                error = ""
                 keyVerificationFinished("verified")
             } else {
                 authMode = storage
