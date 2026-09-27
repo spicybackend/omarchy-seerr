@@ -41,6 +41,7 @@ QtObject {
     property bool awaitingKeyStorageChoice: false
     property string _verifiedKeyForChoice: ""
     property string persistenceMode: "session"
+    property bool _restoreAttempted: false
     property string _configWriteText: ""
     property var _configWriteCallback: null
     property Process _configProcess: Process {
@@ -55,6 +56,7 @@ QtObject {
             stdinEnabled = false
         }
         onExited: function(exitCode, exitStatus) {
+            console.log("Seerr config write exit code=" + exitCode + " status=" + exitStatus)
             var callback = api._configWriteCallback
             api._configWriteCallback = null
             if (callback) callback(exitCode === 0)
@@ -133,6 +135,7 @@ QtObject {
         var action = _pendingKeyOperation
         _pendingKeyOperation = ""
         keyringAvailable = code === 0 || (action === "lookup" && code === 1)
+        console.log("Seerr keyring " + action + " exit code=" + code + " status=" + exitStatus + " ok=" + keyringAvailable + " output='" + _keyringOutput.replace(/\r?\n/g, " ") + "'")
         var output = _keyringOutput.replace(/\r?\n$/, "")
         _keyringOutput = ""
         var callback = _pendingKeyCallback
@@ -374,7 +377,9 @@ QtObject {
         xhr.send(payload === null ? "" : JSON.stringify(payload))
     }
     function restore() {
-        if (!serverUrl) return
+        if (_restoreAttempted || authenticated || awaitingKeyStorageChoice || busy) return
+        _restoreAttempted = true
+        if (!serverUrl) { error = "Enter your Seerr server URL and API key."; return }
         var saved
         try { saved = JSON.parse(configFile.text() || "{}") } catch (e) { saved = ({}) }
         if (saved.apiKey) {
@@ -391,6 +396,7 @@ QtObject {
 
     function loginWithApiKey(url, apiKey) {
         if (busy) { error = "Please wait for the current request to finish."; keyVerificationFinished(error); return }
+        _restoreAttempted = true
         var key = String(apiKey || "").trim()
         if (!key) { error = "Enter a Seerr API key."; keyVerificationFinished(error); return }
         var validatedUrl
@@ -534,6 +540,7 @@ QtObject {
             _apiKey = ""
             awaitingKeyStorageChoice = false
             _verifiedKeyForChoice = ""
+            _restoreAttempted = false
             if (oldMode === "plaintext") {
                 _writeConfig({ serverUrl: serverUrl }, function(ok) {
                     authMode = "session"

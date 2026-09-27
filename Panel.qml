@@ -261,6 +261,7 @@ Panel {
           }
           ConfirmDialog {
             z: 20
+            opened: root.confirmingKeyStorage
             message: "Anyone who can read ~/.config/omarchy/seerr-quick-requests/config.json can use this broad Seerr API key. It is unencrypted; continue only on a trusted single-user machine."
             cancelText: "Cancel"
             confirmText: "Save as plain text"
