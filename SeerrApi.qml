@@ -614,20 +614,20 @@ QtObject {
 
     function _fetchQualityProfiles() {
         if (!authenticated) return
-        _send("GET", "/settings/radarr", null, "profiles", function(data) {
+        _send("GET", "/service/radarr", null, "profiles", function(data) {
             var servers = data && Array.isArray(data) ? data : []
             if (servers.length) {
-                _send("GET", "/settings/radarr/" + servers[0].id + "/profiles", null, "profiles", function(profileData) {
-                    var list = profileData && Array.isArray(profileData) ? profileData : []
+                _send("GET", "/service/radarr/" + servers[0].id, null, "profiles", function(profileData) {
+                    var list = profileData && Array.isArray(profileData.profiles) ? profileData.profiles : []
                     movieProfiles = list.map(function(p) { return { value: String(p.id), label: String(p.name) } })
                 })
             }
         }, null, true)
-        _send("GET", "/settings/sonarr", null, "profiles", function(data) {
+        _send("GET", "/service/sonarr", null, "profiles", function(data) {
             var servers = data && Array.isArray(data) ? data : []
             if (servers.length) {
-                _send("GET", "/settings/sonarr/" + servers[0].id + "/profiles", null, "profiles", function(profileData) {
-                    var list = profileData && Array.isArray(profileData) ? profileData : []
+                _send("GET", "/service/sonarr/" + servers[0].id, null, "profiles", function(profileData) {
+                    var list = profileData && Array.isArray(profileData.profiles) ? profileData.profiles : []
                     tvProfiles = list.map(function(p) { return { value: String(p.id), label: String(p.name) } })
                 })
             }

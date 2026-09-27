@@ -346,7 +346,7 @@ Panel {
           }
           Text {
             visible: root.showSettings && seerrApi.authenticated && seerrApi.movieProfiles.length === 0 && seerrApi.tvProfiles.length === 0 && !seerrApi.busy
-            text: "Quality profiles unavailable. In Seerr → Settings → General → API Key, make sure this key has the Settings permission."
+            text: "Quality profiles unavailable. Configure Radarr or Sonarr in Seerr."
             color: Color.muted
             font.family: root.fontFamily
             font.pixelSize: Style.font.bodySmall
