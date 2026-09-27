@@ -194,6 +194,17 @@ Panel {
               Keys.onReturnPressed: loginButton.clicked()
               Keys.onEnterPressed: loginButton.clicked()
             }
+            Button {
+              id: loginButton
+              Layout.fillWidth: true
+              text: root.sendingKey ? "Signing in…" : "Sign in"
+              enabled: !root.sendingKey && !seerrApi.busy && loginUrl.text.trim() !== "" && apiKeyField.text.trim() !== ""
+              onClicked: {
+                root.sendingKey = true
+                seerrApi.loginWithApiKey(loginUrl.text.trim(), apiKeyField.text)
+                apiKeyField.text = ""
+              }
+            }
             Text {
               text: "Create an API key in Seerr Settings → General. It grants broad server API access and will be saved in your unlocked desktop keyring."
               color: Color.muted
@@ -213,17 +224,6 @@ Panel {
                 anchors.fill: parent
                 cursorShape: Qt.PointingHandCursor
                 onClicked: Qt.openUrlExternally("https://docs.seerr.dev/api/seerr-api/")
-              }
-            }
-            Button {
-              id: loginButton
-              Layout.fillWidth: true
-              text: root.sendingKey ? "Signing in…" : "Sign in"
-              enabled: !root.sendingKey && !seerrApi.busy && loginUrl.text.trim() !== "" && apiKeyField.text.trim() !== ""
-              onClicked: {
-                root.sendingKey = true
-                seerrApi.loginWithApiKey(loginUrl.text.trim(), apiKeyField.text)
-                apiKeyField.text = ""
               }
             }
           }

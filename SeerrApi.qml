@@ -394,7 +394,6 @@ QtObject {
             keyringAvailable = ok
             if (ok && secret) _verifyApiKey(secret, "keyring")
             else if (!ok) error = "Secret Service is unavailable. Unlock your desktop keyring and retry."
-            else error = "No saved API key. Sign in to choose how to save it."
         })
     }
 
