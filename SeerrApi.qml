@@ -6,6 +6,7 @@ QtObject {
     id: api
     signal requestSucceeded(string mediaType, int tmdbId, var request)
     signal keyVerificationFinished(string result)
+    onRequestSucceeded: function(mediaType, tmdbId, request) { _updateSearchResult(mediaType, tmdbId, request) }
     property string authMode: "session"
     property bool keyringAvailable: false
     property var _apiKey: ""
@@ -202,6 +203,7 @@ QtObject {
         var releaseDate = date ? new Date(date) : null
         var isReleased = releaseDate ? releaseDate <= new Date() : true
         var existingRequest = (mediaInfo.requests && mediaInfo.requests[0]) || {}
+        var existingRequestId = Number(existingRequest.id) || Number(item.requestId) || 0
         var normalized = Object.assign({}, item, {
             mediaType: type,
             title: String(title || "Unknown title"),
@@ -209,8 +211,8 @@ QtObject {
             posterUrl: item.posterPath ? "https://image.tmdb.org/t/p/w185/" + String(item.posterPath).replace(/^\/+/, "") : "",
             alreadyRequested: requestItem ? true : requested,
             status: Number(mediaInfo.status),
-            requestId: Number(existingRequest.id) || 0,
-            requestedSeasons: Array.isArray(existingRequest.seasons) ? existingRequest.seasons : [],
+            requestId: existingRequestId,
+            requestedSeasons: Array.isArray(existingRequest.seasons) && existingRequest.seasons.length ? existingRequest.seasons : (Array.isArray(item.requestedSeasons) ? item.requestedSeasons : []),
             statusLabel: requestItem ? _requestStatus(mediaInfo, isReleased) : (requested ? _statusLabel(mediaInfo, isReleased) : "Not requested")
         })
         return normalized
@@ -257,6 +259,30 @@ QtObject {
             if (requests[i].mediaType === type && Number(media.tmdbId || media.id || requests[i].tmdbId) === id) return true
         }
         return false
+    }
+
+    function _updateSearchResult(mediaType, tmdbId, request) {
+        var type = String(mediaType)
+        var id = Number(tmdbId)
+        var info = request && request.mediaInfo ? request.mediaInfo : (request && request.media ? request.media : {})
+        var newStatus = Number(info.status) || 2
+        var newRequestId = Number(request && request.id) || 0
+        var newRequestedSeasons = request && Array.isArray(request.seasons) ? request.seasons : []
+        for (var i = 0; i < searchResults.length; ++i) {
+            var r = searchResults[i]
+            if (r.mediaType === type && Number(r.id) === id) {
+                var updated = searchResults.slice()
+                updated[i] = Object.assign({}, r, {
+                    alreadyRequested: true,
+                    status: newStatus,
+                    requestId: newRequestId,
+                    requestedSeasons: newRequestedSeasons,
+                    statusLabel: _statusLabel(info, true)
+                })
+                searchResults = updated
+                break
+            }
+        }
     }
 
     function _enrichRequestRows(rows) {
