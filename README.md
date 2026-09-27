@@ -36,6 +36,32 @@ Enter your Seerr instance URL and API key (the URL is saved and prefilled next t
 
 The instance URL is saved separately. **Settings → Sign out** removes the saved key/config value. Local email/password and cookie sign-in are not supported. If Secret Service fails, choose plaintext or session-only.
 
+## Keyring setup and troubleshooting
+
+Keyring storage uses the freedesktop Secret Service via `secret-tool`. On Omarchy it is usually provided by `gnome-keyring-daemon` and should work without manual setup as long as your login keyring is unlocked.
+
+Check that the service is running:
+
+```sh
+pgrep -a gnome-keyring-daemon
+secret-tool lookup service omarchy-seerr-quick-requests server http://umbrel:5056
+```
+
+If the lookup prints your key, the plugin can read it. If the save still fails, the most common cause is a **locked login keyring**. Unlock it with your user password:
+
+```sh
+secret-tool lookup service anything anything
+```
+
+A graphical unlock prompt should appear. If no prompt appears, make sure a keyring daemon is running:
+
+```sh
+/usr/lib/polkit-gnome-authentication-agent-1 &
+gnome-keyring-daemon --start --components=secrets --daemonize
+```
+
+On systems without a graphical keyring, use **Plain text** or **Don't save** instead.
+
 ## Included
 
 - Requested TV shows and movies, with request/availability status.

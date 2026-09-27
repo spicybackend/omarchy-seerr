@@ -19,7 +19,9 @@ QtObject {
         stdout: SplitParser {
             onRead: data => { api._keyringOutput += data + "\n" }
         }
-        stderr: SplitParser {}
+        stderr: SplitParser {
+            onRead: data => { api._keyringOutput += data + "\n" }
+        }
         onStarted: {
             if (api._pendingKeyOperation === "store") write(String(api._pendingKey) + "\n")
             api._secretProcess.stdinEnabled = false
@@ -55,7 +57,7 @@ QtObject {
         onExited: function(exitCode, exitStatus) {
             var callback = api._configWriteCallback
             api._configWriteCallback = null
-            if (callback) callback(exitCode === 0 && exitStatus === 0)
+            if (callback) callback(exitCode === 0)
         }
     }
     property FileView configFile: FileView {
@@ -130,7 +132,7 @@ QtObject {
     function _secretProcessFinished(code, exitStatus) {
         var action = _pendingKeyOperation
         _pendingKeyOperation = ""
-        keyringAvailable = exitStatus === 0 && (code === 0 || action === "lookup" && code === 1)
+        keyringAvailable = code === 0 || (action === "lookup" && code === 1)
         var output = _keyringOutput.replace(/\r?\n$/, "")
         _keyringOutput = ""
         var callback = _pendingKeyCallback
