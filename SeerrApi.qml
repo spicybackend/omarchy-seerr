@@ -40,7 +40,6 @@ QtObject {
     property var searchResults: []
     property bool awaitingKeyStorageChoice: false
     property string _verifiedKeyForChoice: ""
-    property string persistenceMode: "session"
     property bool _restoreAttempted: false
     property string _configWriteText: ""
     property var _configWriteCallback: null
@@ -391,12 +390,6 @@ QtObject {
         if (_restoreAttempted || authenticated || awaitingKeyStorageChoice || busy) return
         _restoreAttempted = true
         if (!serverUrl) { error = "Enter your Seerr server URL and API key."; return }
-        var saved
-        try { saved = JSON.parse(configFile.text() || "{}") } catch (e) { saved = ({}) }
-        if (saved.apiKey) {
-            _verifyApiKey(saved.apiKey, "plaintext")
-            return
-        }
         _startSecret("lookup", serverUrl, "", function(ok, secret) {
             keyringAvailable = ok
             if (ok && secret) _verifyApiKey(secret, "keyring")
@@ -454,7 +447,7 @@ QtObject {
         if (choice === "keyring") {
             _startSecret("store", serverUrl, _verifiedKeyForChoice, function(ok) {
                 if (!ok) {
-                    error = "Could not save in the keyring. Choose plaintext or don't save."
+                    error = "Could not save in the keyring. Use this session only or sign out and retry."
                     return
                 }
                 _writeConfig({ serverUrl: serverUrl }, function(ok) {
@@ -462,16 +455,9 @@ QtObject {
                     _completeKeyLogin("keyring")
                 })
             })
-        } else if (choice === "plaintext") {
-            _writeConfig({ serverUrl: serverUrl, apiKey: _verifiedKeyForChoice }, function(ok) {
-                if (!ok) { error = "Could not write the plaintext credential file with safe permissions."; return }
-                if (authMode === "keyring") _startSecret("clear", serverUrl, "", function(result) { keyringAvailable = result })
-                _completeKeyLogin("plaintext")
-            })
         } else if (choice === "none") {
             _writeConfig({ serverUrl: serverUrl }, function(ok) {
                 if (!ok) { error = "Could not write configuration with safe permissions."; return }
-                if (authMode === "keyring") _startSecret("clear", serverUrl, "", function(result) { keyringAvailable = result })
                 _completeKeyLogin("session")
             })
         }
@@ -553,12 +539,7 @@ QtObject {
             awaitingKeyStorageChoice = false
             _verifiedKeyForChoice = ""
             _restoreAttempted = false
-            if (oldMode === "plaintext") {
-                _writeConfig({ serverUrl: serverUrl }, function(ok) {
-                    authMode = "session"
-                    if (!ok) error = "Signed out, but the plaintext key could not be removed safely."
-                })
-            } else if (oldMode === "keyring") {
+            if (oldMode === "keyring") {
                 authMode = "session"
                 _startSecret("clear", oldUrl, "", function(ok) {
                     keyringAvailable = ok
