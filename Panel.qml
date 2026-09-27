@@ -164,6 +164,7 @@ Panel {
             visible: root.showSettings && seerrApi.authenticated
             text: "Sign out"
             fontSize: Style.font.bodySmall
+            foreground: Color.urgent
             onClicked: { seerrApi.logout(); apiKeyField.text = ""; root.showSettings = false }
           }
 
