@@ -274,6 +274,13 @@ QtObject {
         xhr.send()
     }
 
+    function _httpError(status, message) {
+        var body = String(message || "")
+        if (Number(status) === 401 || /cookie ['\\"]connect\.sid['\\"] required/i.test(body))
+            return "Seerr rejected the API key (HTTP 401). Check that this key is valid for this Seerr instance and supports API authentication."
+        return body || ("Seerr returned HTTP " + (Number(status) || "network error") + ".")
+    }
+
     function _send(method, path, payload, operation, onSuccess, onError, independent) {
         if (busy && !independent) {
             error = "Please wait for the current request to finish."
@@ -319,24 +326,23 @@ QtObject {
             _xhr = null
             busy = false
             if (xhr.status < 200 || xhr.status >= 300) {
-                var message = "Seerr returned HTTP " + (xhr.status || "network error") + "."
+                var message = ""
                 try {
                     var response = JSON.parse(xhr.responseText)
                     if (response.message) message = String(response.message)
                     else if (response.error) message = String(response.error)
-                } catch (e) {
-                    if (!xhr.status) message = "Could not reach Seerr. Check the server URL and network connection."
-                }
+                } catch (e) {}
+                if (!xhr.status) message = "Could not reach Seerr. Check the server URL and network connection."
                 if (operation === "restore" || operation === "keyverify") {
                     authenticated = false
                     user = null
                 }
                 if (operation === "restore" && xhr.status === 401)
-                    error = "No saved Seerr API key is available. Enter an API key to sign in."
+                    error = "No saved API key worked for this Seerr server. Enter a valid API key."
                 else if (operation === "keyverify")
-                    error = "The API key was rejected or /auth/me did not return a user."
+                    error = _httpError(xhr.status, message)
                 else
-                    error = message
+                    error = _httpError(xhr.status, message)
                 if (onError) onError()
                 return
             }
@@ -396,8 +402,11 @@ QtObject {
 
     function _verifyApiKey(key, storage) {
         _apiKey = String(key)
-        authMode = "apiKey"
+        busy = true
+        error = "Checking Seerr API key…"
+        authMode = "verifying"
         _send("GET", "/auth/me", null, "keyverify", function(data) {
+            busy = false
             if (!data) {
                 _apiKey = ""
                 error = "Seerr API key did not return a signed-in user."
@@ -407,6 +416,7 @@ QtObject {
             if (storage === "choice") {
                 _verifiedKeyForChoice = key
                 awaitingKeyStorageChoice = true
+                authMode = "choice"
                 error = "API key verified. Choose whether and where to save it."
             } else {
                 authMode = storage
@@ -451,6 +461,7 @@ QtObject {
         authMode = mode
         authenticated = true
         awaitingKeyStorageChoice = false
+        if (mode === "session") _apiKey = _verifiedKeyForChoice
         _verifiedKeyForChoice = ""
         refreshRequests()
     }

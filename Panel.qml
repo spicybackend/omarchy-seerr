@@ -15,6 +15,7 @@ Panel {
   readonly property var barIdentity: hostWidget || root
   property alias api: seerrApi
   property bool showSettings: false
+  property string searchText: ""
   property int selectedResultIndex: -1
   property bool focusResults: false
   property bool confirmingKeyStorage: false
@@ -253,7 +254,7 @@ Panel {
           }
           ConfirmDialog {
             z: 20
-            message: "Anyone who can read ~/.config/omarchy/seerr-quick-requests.json can use this broad Seerr API key. Continue only on a trusted single-user machine."
+            message: "Anyone who can read ~/.config/omarchy/seerr-quick-requests/config.json can use this broad Seerr API key. It is unencrypted; continue only on a trusted single-user machine."
             cancelText: "Cancel"
             confirmText: "Save as plain text"
             onCanceled: root.confirmingKeyStorage = false
