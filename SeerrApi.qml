@@ -207,6 +207,7 @@ QtObject {
             year: _year(date),
             posterUrl: item.posterPath ? "https://image.tmdb.org/t/p/w185/" + String(item.posterPath).replace(/^\/+/, "") : "",
             alreadyRequested: requestItem ? true : requested,
+            status: Number(mediaInfo.status),
             statusLabel: requestItem ? _requestStatus(mediaInfo, isReleased) : (requested ? _statusLabel(mediaInfo, isReleased) : "Not requested")
         })
         return normalized
