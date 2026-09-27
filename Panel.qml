@@ -328,31 +328,6 @@ Panel {
             wrapMode: Text.Wrap
             Layout.fillWidth: true
           }
-          Dropdown {
-            visible: root.showSettings && seerrApi.authenticated && seerrApi.movieProfiles.length > 0
-            Layout.fillWidth: true
-            label: "Movie quality profile"
-            value: String(seerrApi.movieProfileId)
-            options: seerrApi.movieProfiles
-            onChanged: seerrApi.setMovieProfile(value)
-          }
-          Dropdown {
-            visible: root.showSettings && seerrApi.authenticated && seerrApi.tvProfiles.length > 0
-            Layout.fillWidth: true
-            label: "TV quality profile"
-            value: String(seerrApi.tvProfileId)
-            options: seerrApi.tvProfiles
-            onChanged: seerrApi.setTvProfile(value)
-          }
-          Text {
-            visible: root.showSettings && seerrApi.authenticated && seerrApi.movieProfiles.length === 0 && seerrApi.tvProfiles.length === 0 && !seerrApi.busy
-            text: "Quality profiles unavailable. Configure Radarr or Sonarr in Seerr."
-            color: Color.muted
-            font.family: root.fontFamily
-            font.pixelSize: Style.font.bodySmall
-            wrapMode: Text.Wrap
-            Layout.fillWidth: true
-          }
           Button {
             visible: root.showSettings && seerrApi.authenticated
             text: "Sign out"

@@ -34,17 +34,7 @@ QtObject {
         try { return JSON.parse(configFile.text() || "{}").serverUrl || "" }
         catch (e) { return "" }
     }
-    property int movieProfileId: {
-        try { return JSON.parse(configFile.text() || "{}").movieProfileId || 0 }
-        catch (e) { return 0 }
-    }
-    property int tvProfileId: {
-        try { return JSON.parse(configFile.text() || "{}").tvProfileId || 0 }
-        catch (e) { return 0 }
-    }
     property bool authenticated: false
-    property var movieProfiles: []
-    property var tvProfiles: []
     property var user: null
     property bool busy: false
     property string error: ""
@@ -522,7 +512,6 @@ QtObject {
         error = ""
         if (mode === "session") _apiKey = _verifiedKeyForChoice
         _verifiedKeyForChoice = ""
-        _fetchQualityProfiles()
         refreshRequests()
     }
 
@@ -585,53 +574,12 @@ QtObject {
         if (type === "tv") {
             if (Array.isArray(seasons) && seasons.length) payload.seasons = seasons
             else payload.seasons = "all"
-            if (tvProfileId > 0) payload.profileId = tvProfileId
-        } else {
-            if (movieProfileId > 0) payload.profileId = movieProfileId
         }
         _send("POST", "/request", payload, "create", function(data) {
             if (data) requests = [_normalizeRequest(data)].concat(requests)
             requestSucceeded(type, id, data)
             refreshRequests()
         })
-    }
-
-    function setMovieProfile(profileId) {
-        var id = Number(profileId) || 0
-        movieProfileId = id
-        _writeConfig({ serverUrl: serverUrl, movieProfileId: id, tvProfileId: tvProfileId }, function(ok) {
-            if (!ok) error = "Could not save the movie quality profile preference."
-        })
-    }
-
-    function setTvProfile(profileId) {
-        var id = Number(profileId) || 0
-        tvProfileId = id
-        _writeConfig({ serverUrl: serverUrl, movieProfileId: movieProfileId, tvProfileId: id }, function(ok) {
-            if (!ok) error = "Could not save the TV quality profile preference."
-        })
-    }
-
-    function _fetchQualityProfiles() {
-        if (!authenticated) return
-        _send("GET", "/service/radarr", null, "profiles", function(data) {
-            var servers = data && Array.isArray(data) ? data : []
-            if (servers.length) {
-                _send("GET", "/service/radarr/" + servers[0].id, null, "profiles", function(profileData) {
-                    var list = profileData && Array.isArray(profileData.profiles) ? profileData.profiles : []
-                    movieProfiles = list.map(function(p) { return { value: String(p.id), label: String(p.name) } })
-                })
-            }
-        }, null, true)
-        _send("GET", "/service/sonarr", null, "profiles", function(data) {
-            var servers = data && Array.isArray(data) ? data : []
-            if (servers.length) {
-                _send("GET", "/service/sonarr/" + servers[0].id, null, "profiles", function(profileData) {
-                    var list = profileData && Array.isArray(profileData.profiles) ? profileData.profiles : []
-                    tvProfiles = list.map(function(p) { return { value: String(p.id), label: String(p.name) } })
-                })
-            }
-        }, null, true)
     }
 
     function fetchTvSeasons(tmdbId, callback) {
