@@ -1,72 +1,68 @@
 # Seerr Quick Requests
 
-A compact Omarchy Quattro bar popup for requesting TV shows and movies from Seerr.
+An Omarchy Quattro bar popup for quickly requesting TV shows and movies from [Seerr](https://docs.seerr.dev/).
 
-## Install
+![Preview](preview.png)
 
-```sh
-omarchy plugin add https://github.com/<owner>/omarchy-seerr.git --enable
-```
-
-The plugin adds the **TV** button to the bar's center section when enabled. If needed, move it with:
+## Install from the Omarchy Plugin Store
 
 ```sh
-omarchy bar move io.github.omarchy-seerr.plugin --section center
+omarchy plugin install spicybackend.seerr
+omarchy plugin enable spicybackend.seerr
 ```
 
-Click the bar button to toggle the popup. It uses Omarchy's shared theme colors and scaling.
+Or install directly from GitHub:
+
+```sh
+omarchy plugin add https://github.com/spicybackend/omarchy-seerr.git --enable
+```
+
+The plugin adds a **TV** button to the bar. Move it if needed:
+
+```sh
+omarchy bar move spicybackend.seerr --section center
+```
+
+Click the bar button or press the hotkey to open the popup.
 
 ## Hotkey
 
-Add this to `~/.config/hypr/bindings.conf` (or your Omarchy user keybinding file):
+Add to `~/.config/hypr/bindings.conf` (or your Omarchy user keybinding file):
 
 ```ini
-bind = SUPER SHIFT ALT, R, exec, omarchy-shell shell toggle io.github.omarchy-seerr.plugin '{}'
+bind = SUPER SHIFT ALT, R, exec, omarchy-shell shell toggle spicybackend.seerr '{}'
 ```
 
-Reload Hyprland configuration after adding the binding. The plugin does not edit user keybind files automatically.
+Reload Hyprland configuration after adding the binding.
 
-## Sign-in and persistence
+## Setup
 
-Enter your Seerr instance URL and API key (the URL is saved and prefilled next time). Create the key in **Seerr → Settings → General**; [Seerr's API documentation](https://docs.seerr.dev/api/seerr-api/) documents `X-Api-Key` authentication. After Seerr verifies the key with `/auth/me`, you are signed in and can choose:
+1. Open the popup and click **Settings**.
+2. Enter your Seerr instance URL and API key.
+   - Create the API key in **Seerr → Settings → General**.
+3. Choose how to save the key:
+   - **Save in keyring** (recommended): stores the key in the desktop Secret Service, protected by your login keyring.
+   - **Use this session only**: keeps the key in memory until the shell exits.
+4. The instance URL is saved and prefilled next time.
 
-- **Save in keyring:** recommended; the API key is stored in the desktop Secret Service and protected by your login keyring. It must be unlocked after reboot.
-- **Use this session only:** the key is kept in memory until the current shell exits.
+Use **Settings → Sign out** to remove the saved key.
 
-The instance URL is saved separately. **Settings → Sign out** removes the saved key. Local email/password and cookie sign-in are not supported.
+## Features
 
-## Keyring setup and troubleshooting
+- View requested TV shows and movies with availability status.
+- Search across TV and movies with poster thumbnails and release years.
+- Request movies instantly.
+- Request TV shows with a season picker: **First**, **Latest**, **All**, or a custom selection.
+- Edit existing TV requests to change selected seasons.
+- Remove a request, with an optional toggle to also delete files from Sonarr/Radarr (requires ADMIN permission on the API key).
+- Reacts to Omarchy theme changes automatically.
 
-Keyring storage uses the freedesktop Secret Service via `secret-tool`. On Omarchy it is usually provided by `gnome-keyring-daemon` and should work without manual setup as long as your login keyring is unlocked.
+## Notes
 
-Check that the service is running:
+- This is a third-party Omarchy Quattro plugin (`manifest.json` schema v1).
+- Seerr enforces the API key's permissions and quotas.
+- Local email/password sign-in is not supported; use an API key.
 
-```sh
-pgrep -a gnome-keyring-daemon
-secret-tool lookup service omarchy-seerr-quick-requests server http://umbrel:5056
-```
+## License
 
-If the lookup prints your key, the plugin can read it. If the save still fails, the most common cause is a **locked login keyring**. Unlock it with your user password:
-
-```sh
-secret-tool lookup service anything anything
-```
-
-A graphical unlock prompt should appear. If no prompt appears, make sure a keyring daemon is running:
-
-```sh
-/usr/lib/polkit-gnome-authentication-agent-1 &
-gnome-keyring-daemon --start --components=secrets --daemonize
-```
-
-On systems without a graphical keyring, use **Use this session only**.
-
-## Included
-
-- Requested TV shows and movies, with request/availability status (including "Not yet released" for upcoming titles).
-- Mixed TV/movie search, release year, poster thumbnails, and typed requests.
-- Per-request **Remove** button to delete the Seerr request record (does not delete downloaded files).
-- Settings for default movie and TV **quality profiles** (requires an API key with permission to read Seerr settings).
-- API-key persistence in the desktop keyring and saved instance URL.
-
-This is a third-party Omarchy Quattro plugin (`manifest.json` schema v1). Seerr enforces the key's permissions and quotas. Keyring persistence requires a working Secret Service and an unlocked login keyring after reboot.
+MIT

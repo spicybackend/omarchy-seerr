@@ -6,7 +6,7 @@ import qs.Ui
 
 Panel {
   id: root
-  moduleName: "io.github.omarchy-seerr.plugin"
+  moduleName: "spicybackend.seerr"
   ipcTarget: ""
   manageIpc: false
 

@@ -112,7 +112,7 @@ QtObject {
         var origin = new URL(base).origin.toLowerCase()
         var args = ["secret-tool", action]
         if (action === "store") args.push("--label=Omarchy Seerr API key")
-        args.push("service", "omarchy-seerr-quick-requests", "server", origin)
+        args.push("service", "spicybackend.seerr", "server", origin)
         return args
     }
 

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "id": "io.github.omarchy-seerr.plugin",
+  "id": "spicybackend.seerr",
   "name": "Seerr Quick Requests",
   "version": "1.0.0",
   "license": "MIT",
