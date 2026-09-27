@@ -238,6 +238,7 @@ QtObject {
             }
             _fetchRequestDetail(row, i, key, rows)
         }
+        requests = rows.slice()
     }
 
     function _fetchRequestDetail(row, index, key, rows) {
