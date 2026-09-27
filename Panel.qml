@@ -25,23 +25,32 @@ Panel {
   property var seasonPickerRequestedSeasons: []
   property var seasonPickerOptions: []
   property var seasonPickerSelected: []
+  property bool seasonPickerEditing: false
 
-  property bool focusResults: false
-
-  function requestResult(result) {
+  function openSeasonPicker(result, editing) {
     var type = root.resultType(result)
     var id = Number(result.id || result.tmdbId)
-    if (type !== "tv") { seerrApi.requestMedia(type, id); return }
+    if (type !== "tv") return
     seerrApi.fetchTvSeasons(id, function(seasons) {
-      if (!seasons.length) { seerrApi.requestMedia("tv", id, ["all"], result.requestId, result.requestedSeasons); return }
+      if (!seasons.length) { seerrApi.requestMedia("tv", id, ["all"], result.requestId, result.requestedSeasons, editing); return }
       root.seasonPickerTmdbId = id
       root.seasonPickerRequestId = Number(result.requestId) || 0
       root.seasonPickerRequestedSeasons = Array.isArray(result.requestedSeasons) ? result.requestedSeasons : []
+      root.seasonPickerEditing = editing
       root.seasonPickerOptions = seasons
-      root.seasonPickerSelected = seasons.filter(function(s) { return s.available })
-                                         .map(function(s) { return s.seasonNumber })
+      if (editing) {
+        root.seasonPickerSelected = root.seasonPickerRequestedSeasons.slice()
+      } else {
+        root.seasonPickerSelected = seasons.filter(function(s) { return s.available })
+                                           .map(function(s) { return s.seasonNumber })
+      }
     })
   }
+
+  function requestResult(result) { root.openSeasonPicker(result, false) }
+  function editRequest(result) { root.openSeasonPicker(result, true) }
+
+  property bool focusResults: false
   function seasonSelected(seasonNumber) {
     return root.seasonPickerSelected.indexOf(seasonNumber) >= 0
   }
@@ -262,19 +271,21 @@ Panel {
                 root.seasonPickerRequestedSeasons = []
                 root.seasonPickerOptions = []
                 root.seasonPickerSelected = []
+                root.seasonPickerEditing = false
               }
             }
             Button {
               Layout.fillWidth: true
-              text: root.seasonPickerRequestId > 0 ? "Update request" : "Request"
+              text: root.seasonPickerEditing ? "Save" : (root.seasonPickerRequestId > 0 ? "Update request" : "Request")
               enabled: root.seasonPickerSelected.length > 0
               onClicked: {
-                seerrApi.requestMedia("tv", root.seasonPickerTmdbId, root.seasonPickerSelected, root.seasonPickerRequestId, root.seasonPickerRequestedSeasons)
+                seerrApi.requestMedia("tv", root.seasonPickerTmdbId, root.seasonPickerSelected, root.seasonPickerRequestId, root.seasonPickerRequestedSeasons, root.seasonPickerEditing)
                 root.seasonPickerTmdbId = 0
                 root.seasonPickerRequestId = 0
                 root.seasonPickerRequestedSeasons = []
                 root.seasonPickerOptions = []
                 root.seasonPickerSelected = []
+                root.seasonPickerEditing = false
               }
             }
           }
@@ -557,11 +568,21 @@ Panel {
           Layout.fillWidth: true
         }
       }
-      Button {
-        text: "Remove"
-        fontSize: Style.font.bodySmall
-        foreground: Color.urgent
-        onClicked: root.deletingRequestId = Number(modelData.requestId || 0)
+      RowLayout {
+        spacing: Style.spacing.sm
+        PanelActionButton {
+          visible: root.resultType(modelData) === "tv"
+          iconText: "󰏫"
+          tooltipText: "Edit seasons"
+          onClicked: root.editRequest(modelData)
+        }
+        PanelActionButton {
+          iconText: "󰅙"
+          tooltipText: "Remove request"
+          foreground: Color.urgent
+          hoverColor: Color.urgent
+          onClicked: root.deletingRequestId = Number(modelData.requestId || 0)
+        }
       }
     }
   }

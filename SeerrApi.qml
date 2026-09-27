@@ -544,7 +544,7 @@ QtObject {
         })
     }
 
-    function requestMedia(mediaType, tmdbId, seasons, requestId, requestedSeasons) {
+    function requestMedia(mediaType, tmdbId, seasons, requestId, requestedSeasons, replace) {
         var type = String(mediaType || "")
         var id = Number(tmdbId)
         if (!authenticated || (type !== "movie" && type !== "tv") || !isFinite(id) || id <= 0) {
@@ -555,8 +555,8 @@ QtObject {
         if (rid > 0 && type === "tv") {
             var existing = Array.isArray(requestedSeasons) ? requestedSeasons : []
             var selected = Array.isArray(seasons) ? seasons : []
-            var merged = existing.concat(selected).filter(function(v, i, a) { return a.indexOf(v) === i })
-            _send("PUT", "/request/" + rid, { seasons: merged.length ? merged : "all" }, "update", function(data) {
+            var updated = replace ? selected : existing.concat(selected).filter(function(v, i, a) { return a.indexOf(v) === i })
+            _send("PUT", "/request/" + rid, { seasons: updated.length ? updated : "all" }, "update", function(data) {
                 requestSucceeded(type, id, data)
                 refreshRequests()
             })
