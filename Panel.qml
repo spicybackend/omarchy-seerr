@@ -110,9 +110,30 @@ Panel {
     PanelKeyCatcher {
       id: keyCatcher
       anchors.fill: parent
-      blocked: loginUrl.activeFocus || apiKeyField.activeFocus || searchField.activeFocus
+      blocked: loginUrl.activeFocus || apiKeyField.activeFocus || searchField.activeFocus || root.confirmingKeyStorage
       onCloseRequested: root.close()
       onTabRequested: function(direction) { root.switchPanel(direction) }
+
+      ConfirmDialog {
+        anchors.fill: parent
+        z: 20
+        focus: true
+        opened: root.confirmingKeyStorage
+        message: "Anyone who can read ~/.config/omarchy/seerr-quick-requests/config.json can use this broad Seerr API key. It is unencrypted; continue only on a trusted single-user machine."
+        cancelText: "Cancel"
+        confirmText: "Save as plain text"
+        onOpenedChanged: if (opened) forceActiveFocus()
+        Keys.onPressed: function(event) { if (handleKey(event)) event.accepted = true }
+        onCanceled: {
+          root.confirmingKeyStorage = false
+          Qt.callLater(function() { if (root.opened) keyCatcher.forceActiveFocus() })
+        }
+        onConfirmed: {
+          root.confirmingKeyStorage = false
+          seerrApi.chooseKeyStorage("plaintext")
+          Qt.callLater(function() { if (root.opened) keyCatcher.forceActiveFocus() })
+        }
+      }
 
       Flickable {
         anchors.fill: parent
@@ -257,18 +278,6 @@ Panel {
               Layout.fillWidth: true
               text: "Don't save (this session only)"
               onClicked: seerrApi.chooseKeyStorage("none")
-            }
-          }
-          ConfirmDialog {
-            z: 20
-            opened: root.confirmingKeyStorage
-            message: "Anyone who can read ~/.config/omarchy/seerr-quick-requests/config.json can use this broad Seerr API key. It is unencrypted; continue only on a trusted single-user machine."
-            cancelText: "Cancel"
-            confirmText: "Save as plain text"
-            onCanceled: root.confirmingKeyStorage = false
-            onConfirmed: {
-              root.confirmingKeyStorage = false
-              seerrApi.chooseKeyStorage("plaintext")
             }
           }
           Text {
