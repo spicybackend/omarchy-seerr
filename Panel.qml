@@ -20,6 +20,9 @@ Panel {
   property string searchText: ""
   property int selectedResultIndex: -1
   property int deletingRequestId: 0
+  property int deletingRequestMediaId: 0
+  property string deletingRequestMediaType: ""
+  property bool deletingRequestFiles: false
   property int seasonPickerTmdbId: 0
   property int seasonPickerRequestId: 0
   property var seasonPickerRequestedSeasons: []
@@ -39,7 +42,9 @@ Panel {
       root.seasonPickerEditing = editing
       root.seasonPickerOptions = seasons
       if (editing) {
-        root.seasonPickerSelected = root.seasonPickerRequestedSeasons.slice()
+        root.seasonPickerSelected = root.seasonPickerRequestedSeasons.length
+          ? root.seasonPickerRequestedSeasons.slice()
+          : root.seasonPickerOptions.map(function(s) { return s.seasonNumber })
       } else {
         root.seasonPickerSelected = seasons.filter(function(s) { return s.available })
                                            .map(function(s) { return s.seasonNumber })
@@ -162,24 +167,80 @@ Panel {
       onCloseRequested: root.close()
       onTabRequested: function(direction) { root.switchPanel(direction) }
 
-      ConfirmDialog {
+      BorderSurface {
         anchors.fill: parent
         z: 20
-        focus: true
-        opened: root.deletingRequestId !== 0
-        message: "Remove this request from Seerr? This does not delete downloaded files."
-        cancelText: "Cancel"
-        confirmText: "Remove"
-        onOpenedChanged: if (opened) forceActiveFocus()
-        Keys.onPressed: function(event) { if (handleKey(event)) event.accepted = true }
-        onCanceled: {
-          root.deletingRequestId = 0
-          Qt.callLater(function() { if (root.opened) keyCatcher.forceActiveFocus() })
-        }
-        onConfirmed: {
-          seerrApi.deleteRequest(root.deletingRequestId)
-          root.deletingRequestId = 0
-          Qt.callLater(function() { if (root.opened) keyCatcher.forceActiveFocus() })
+        visible: root.deletingRequestId !== 0
+        color: Util.alpha(Color.background, 0.7)
+        borderSpec: Border.none()
+
+        MouseArea { anchors.fill: parent; onClicked: root.deletingRequestId = 0 }
+
+        BorderSurface {
+          id: deleteCard
+          width: Math.min(parent.width - Style.space(32), Style.space(370))
+          anchors.centerIn: parent
+          color: Color.popups.background
+          borderSpec: Border.flat(Color.accent, Style.normalBorderWidth)
+          padding: Style.space(18)
+
+          MouseArea { anchors.fill: parent; onClicked: {} }
+
+          ColumnLayout {
+            anchors.fill: parent
+            anchors.topMargin: deleteCard.contentTopInset
+            anchors.rightMargin: deleteCard.contentRightInset
+            anchors.bottomMargin: deleteCard.contentBottomInset
+            anchors.leftMargin: deleteCard.contentLeftInset
+            spacing: Style.spacing.md
+
+            Text {
+              text: "Remove this request from Seerr?"
+              color: Color.popups.text
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.title
+              wrapMode: Text.WordWrap
+              Layout.fillWidth: true
+            }
+
+            Toggle {
+              Layout.fillWidth: true
+              label: "Also delete files from " + (root.deletingRequestMediaType === "movie" ? "Radarr" : "Sonarr")
+              checked: root.deletingRequestFiles
+              onClicked: root.deletingRequestFiles = !root.deletingRequestFiles
+            }
+
+            Item { Layout.fillHeight: true }
+
+            RowLayout {
+              Layout.fillWidth: true
+              spacing: Style.spacing.sm
+              Button {
+                Layout.fillWidth: true
+                text: "Cancel"
+                onClicked: {
+                  root.deletingRequestId = 0
+                  root.deletingRequestMediaId = 0
+                  root.deletingRequestMediaType = ""
+                  root.deletingRequestFiles = false
+                  Qt.callLater(function() { if (root.opened) keyCatcher.forceActiveFocus() })
+                }
+              }
+              Button {
+                Layout.fillWidth: true
+                text: "Remove"
+                foreground: Color.urgent
+                onClicked: {
+                  seerrApi.deleteRequest(root.deletingRequestId, root.deletingRequestMediaId, root.deletingRequestFiles)
+                  root.deletingRequestId = 0
+                  root.deletingRequestMediaId = 0
+                  root.deletingRequestMediaType = ""
+                  root.deletingRequestFiles = false
+                  Qt.callLater(function() { if (root.opened) keyCatcher.forceActiveFocus() })
+                }
+              }
+            }
+          }
         }
       }
 
@@ -544,7 +605,7 @@ Panel {
           anchors.fill: parent
           visible: !modelData.posterUrl
           color: Color.popups.background
-          radius: Style.radius.sm
+          radius: Style.cornerRadius
           Text { anchors.centerIn: parent; text: "▧"; color: Color.muted; font.pixelSize: Style.font.title }
         }
       }
@@ -581,7 +642,12 @@ Panel {
           tooltipText: "Remove request"
           foreground: Color.urgent
           hoverColor: Color.urgent
-          onClicked: root.deletingRequestId = Number(modelData.requestId || 0)
+          onClicked: {
+            root.deletingRequestId = Number(modelData.requestId || 0)
+            root.deletingRequestMediaId = Number(modelData.mediaId || 0)
+            root.deletingRequestMediaType = root.resultType(modelData)
+            root.deletingRequestFiles = false
+          }
         }
       }
     }
@@ -608,7 +674,7 @@ Panel {
           anchors.fill: parent
           visible: !modelData.posterUrl
           color: Color.popups.background
-          radius: Style.radius.sm
+          radius: Style.cornerRadius
           Text { anchors.centerIn: parent; text: "▧"; color: Color.muted; font.pixelSize: Style.font.title }
         }
       }

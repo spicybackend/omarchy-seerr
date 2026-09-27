@@ -247,6 +247,7 @@ QtObject {
             tmdbId: id,
             requestId: Number(item.id) || 0,
             requestedSeasons: _seasonNumbers(item.seasons),
+            mediaId: Number(info.id) || 0,
             mediaType: type,
             mediaInfo: mediaInfo,
             title: info.title || info.name || (cached && cached.title) || item.title || item.name || "",
@@ -606,14 +607,20 @@ QtObject {
         }, function() { if (callback) callback([]) }, true)
     }
 
-    function deleteRequest(requestId) {
+    function deleteRequest(requestId, mediaId, deleteFiles) {
         var id = Number(requestId)
+        var mid = Number(mediaId) || 0
         if (!authenticated || !isFinite(id) || id <= 0) {
             error = "Cannot remove this request."
             return
         }
         _send("DELETE", "/request/" + id, null, "delete", function() {
             requests = requests.filter(function(row) { return Number(row.requestId) !== id })
+            if (deleteFiles && mid > 0) {
+                _send("DELETE", "/media/" + mid + "/file", null, "deletefile", function() {}, function() {
+                    error = "Request removed, but deleting files from Radarr/Sonarr failed."
+                }, true)
+            }
         })
     }
 
