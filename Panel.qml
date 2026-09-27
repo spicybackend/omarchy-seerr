@@ -167,18 +167,18 @@ Panel {
       onCloseRequested: root.close()
       onTabRequested: function(direction) { root.switchPanel(direction) }
 
-      BorderSurface {
+      Rectangle {
         anchors.fill: parent
         z: 20
         visible: root.deletingRequestId !== 0
-        color: Util.alpha(Color.background, 0.7)
-        borderSpec: Border.none()
+        color: Util.alpha(Color.background, 0.8)
 
         MouseArea { anchors.fill: parent; onClicked: root.deletingRequestId = 0 }
 
         BorderSurface {
           id: deleteCard
-          width: Math.min(parent.width - Style.space(32), Style.space(370))
+          width: parent.width - Style.space(32)
+          height: deleteCard.contentTopInset + deleteCard.contentBottomInset + Style.space(180)
           anchors.centerIn: parent
           color: Color.popups.background
           borderSpec: Border.flat(Color.accent, Style.normalBorderWidth)
