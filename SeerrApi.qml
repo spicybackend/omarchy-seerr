@@ -589,10 +589,16 @@ QtObject {
         var id = Number(tmdbId)
         if (!isFinite(id) || id <= 0) { if (callback) callback([]); return }
         _send("GET", "/tv/" + id, null, "tvseasons", function(data) {
-            var seasons = data && Array.isArray(data.seasons) ? data.seasons : []
-            callback(seasons.filter(function(s) { return Number(s.seasonNumber) >= 0 })
-                            .map(function(s) { return { seasonNumber: Number(s.seasonNumber), name: String(s.name || "") } })
-                            .sort(function(a, b) { return a.seasonNumber - b.seasonNumber }))
+            var rawSeasons = data && Array.isArray(data.seasons) ? data.seasons : []
+            var mediaSeasons = data && data.mediaInfo && Array.isArray(data.mediaInfo.seasons) ? data.mediaInfo.seasons : []
+            var availableMap = {}
+            mediaSeasons.forEach(function(s) { if (Number(s.status) === 5) availableMap[Number(s.seasonNumber)] = true })
+            callback(rawSeasons.filter(function(s) { return Number(s.seasonNumber) >= 0 })
+                               .map(function(s) {
+                                   var sn = Number(s.seasonNumber)
+                                   return { seasonNumber: sn, name: String(s.name || ""), available: !!availableMap[sn] }
+                               })
+                               .sort(function(a, b) { return a.seasonNumber - b.seasonNumber }))
         }, function() { if (callback) callback([]) }, true)
     }
 

@@ -34,7 +34,8 @@ Panel {
       if (!seasons.length) { seerrApi.requestMedia("tv", id, ["all"]); return }
       root.seasonPickerTmdbId = id
       root.seasonPickerOptions = seasons
-      root.seasonPickerSelected = seasons.map(function(s) { return s.seasonNumber })
+      root.seasonPickerSelected = seasons.filter(function(s) { return s.available })
+                                         .map(function(s) { return s.seasonNumber })
     })
   }
   function seasonSelected(seasonNumber) {
@@ -218,18 +219,32 @@ Panel {
             Layout.fillWidth: true
           }
 
-          Repeater {
-            model: root.seasonPickerOptions
-            delegate: Toggle {
-              required property var modelData
-              Layout.fillWidth: true
-              label: modelData.name || ("Season " + modelData.seasonNumber)
-              checked: root.seasonSelected(modelData.seasonNumber)
-              onClicked: root.toggleSeason(modelData.seasonNumber)
+          Flickable {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            contentWidth: width
+            contentHeight: seasonToggleColumn.implicitHeight
+            clip: true
+            boundsBehavior: Flickable.StopAtBounds
+            interactive: true
+
+            ColumnLayout {
+              id: seasonToggleColumn
+              width: parent.width
+              spacing: Style.spacing.sm
+
+              Repeater {
+                model: root.seasonPickerOptions
+                delegate: Toggle {
+                  required property var modelData
+                  Layout.fillWidth: true
+                  label: modelData.name || ("Season " + modelData.seasonNumber)
+                  checked: root.seasonSelected(modelData.seasonNumber)
+                  onClicked: root.toggleSeason(modelData.seasonNumber)
+                }
+              }
             }
           }
-
-          Item { Layout.fillHeight: true }
 
           RowLayout {
             Layout.fillWidth: true
@@ -264,7 +279,7 @@ Panel {
         contentHeight: panelContent.implicitHeight
         clip: true
         boundsBehavior: Flickable.StopAtBounds
-        interactive: contentHeight > height
+        interactive: true
 
         ColumnLayout {
           id: panelContent
@@ -616,9 +631,11 @@ Panel {
       Button {
         id: requestButton
         property int resultIndex: index
+        readonly property bool fullyAvailable: Number(modelData.status) === 5
+        readonly property bool partiallyAvailable: Number(modelData.status) === 4
         selected: root.selectedResultIndex === resultIndex
-        text: modelData.alreadyRequested ? (modelData.statusLabel || "Requested") : (seerrApi.busy ? "…" : "Request")
-        enabled: !modelData.alreadyRequested && !seerrApi.busy
+        text: fullyAvailable ? "Available" : (partiallyAvailable ? "Request" : (modelData.alreadyRequested ? (modelData.statusLabel || "Requested") : (seerrApi.busy ? "…" : "Request")))
+        enabled: !fullyAvailable && !seerrApi.busy && (!modelData.alreadyRequested || partiallyAvailable)
         onClicked: root.requestResult(modelData)
         Keys.onDownPressed: { root.moveResultSelection(1); event.accepted = true }
         Keys.onUpPressed: { root.moveResultSelection(-1); event.accepted = true }
