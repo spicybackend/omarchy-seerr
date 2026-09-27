@@ -517,7 +517,7 @@ QtObject {
         })
     }
 
-    function requestMedia(mediaType, tmdbId) {
+    function requestMedia(mediaType, tmdbId, seasons) {
         var type = String(mediaType || "")
         var id = Number(tmdbId)
         if (!authenticated || (type !== "movie" && type !== "tv") || !isFinite(id) || id <= 0) {
@@ -534,7 +534,8 @@ QtObject {
         }
         var payload = { mediaType: type, mediaId: id }
         if (type === "tv") {
-            payload.seasons = "all"
+            if (Array.isArray(seasons) && seasons.length) payload.seasons = seasons
+            else payload.seasons = "all"
             if (tvProfileId > 0) payload.profileId = tvProfileId
         } else {
             if (movieProfileId > 0) payload.profileId = movieProfileId
@@ -582,6 +583,17 @@ QtObject {
                 })
             }
         }, null, true)
+    }
+
+    function fetchTvSeasons(tmdbId, callback) {
+        var id = Number(tmdbId)
+        if (!isFinite(id) || id <= 0) { if (callback) callback([]); return }
+        _send("GET", "/tv/" + id, null, "tvseasons", function(data) {
+            var seasons = data && Array.isArray(data.seasons) ? data.seasons : []
+            callback(seasons.filter(function(s) { return Number(s.seasonNumber) >= 0 })
+                            .map(function(s) { return { seasonNumber: Number(s.seasonNumber), name: String(s.name || "") } })
+                            .sort(function(a, b) { return a.seasonNumber - b.seasonNumber }))
+        }, function() { if (callback) callback([]) }, true)
     }
 
     function deleteRequest(requestId) {

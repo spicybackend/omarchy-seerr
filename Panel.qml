@@ -20,8 +20,42 @@ Panel {
   property string searchText: ""
   property int selectedResultIndex: -1
   property int deletingRequestId: 0
+  property int seasonPickerTmdbId: 0
+  property var seasonPickerOptions: []
+  property var seasonPickerSelected: []
 
   property bool focusResults: false
+
+  function requestResult(result) {
+    var type = root.resultType(result)
+    var id = Number(result.id || result.tmdbId)
+    if (type !== "tv") { seerrApi.requestMedia(type, id); return }
+    seerrApi.fetchTvSeasons(id, function(seasons) {
+      if (!seasons.length) { seerrApi.requestMedia("tv", id, ["all"]); return }
+      root.seasonPickerTmdbId = id
+      root.seasonPickerOptions = seasons
+      root.seasonPickerSelected = seasons.map(function(s) { return s.seasonNumber })
+    })
+  }
+  function seasonSelected(seasonNumber) {
+    return root.seasonPickerSelected.indexOf(seasonNumber) >= 0
+  }
+  function toggleSeason(seasonNumber) {
+    var idx = root.seasonPickerSelected.indexOf(seasonNumber)
+    if (idx >= 0) root.seasonPickerSelected.splice(idx, 1)
+    else root.seasonPickerSelected.push(seasonNumber)
+    root.seasonPickerSelected = root.seasonPickerSelected.slice()
+  }
+  function selectSeasonRange(mode) {
+    if (!root.seasonPickerOptions.length) return
+    if (mode === "all") {
+      root.seasonPickerSelected = root.seasonPickerOptions.map(function(s) { return s.seasonNumber })
+    } else if (mode === "first") {
+      root.seasonPickerSelected = [root.seasonPickerOptions[0].seasonNumber]
+    } else if (mode === "latest") {
+      root.seasonPickerSelected = [root.seasonPickerOptions[root.seasonPickerOptions.length - 1].seasonNumber]
+    }
+  }
 
   readonly property int widthHint: Style.space(440)
   readonly property string fontFamily: Style.font.family
@@ -110,7 +144,7 @@ Panel {
     PanelKeyCatcher {
       id: keyCatcher
       anchors.fill: parent
-      blocked: loginUrl.activeFocus || apiKeyField.activeFocus || searchField.activeFocus || root.deletingRequestId !== 0
+      blocked: loginUrl.activeFocus || apiKeyField.activeFocus || searchField.activeFocus || root.deletingRequestId !== 0 || root.seasonPickerTmdbId !== 0
       onCloseRequested: root.close()
       onTabRequested: function(direction) { root.switchPanel(direction) }
 
@@ -132,6 +166,95 @@ Panel {
           seerrApi.deleteRequest(root.deletingRequestId)
           root.deletingRequestId = 0
           Qt.callLater(function() { if (root.opened) keyCatcher.forceActiveFocus() })
+        }
+      }
+
+      BorderSurface {
+        anchors.fill: parent
+        z: 20
+        visible: root.seasonPickerTmdbId !== 0
+        color: Color.popups.background
+        borderSpec: Border.none()
+
+        ColumnLayout {
+          anchors.fill: parent
+          anchors.margins: Style.spacing.md
+          spacing: Style.spacing.md
+
+          Text {
+            text: "Request seasons"
+            color: Color.popups.text
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+            font.bold: true
+            Layout.fillWidth: true
+          }
+
+          RowLayout {
+            Layout.fillWidth: true
+            spacing: Style.spacing.sm
+            Button {
+              Layout.fillWidth: true
+              text: "First"
+              onClicked: root.selectSeasonRange("first")
+            }
+            Button {
+              Layout.fillWidth: true
+              text: "Latest"
+              onClicked: root.selectSeasonRange("latest")
+            }
+            Button {
+              Layout.fillWidth: true
+              text: "All"
+              onClicked: root.selectSeasonRange("all")
+            }
+          }
+
+          Text {
+            text: "Choose:"
+            color: Color.muted
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.bodySmall
+            Layout.fillWidth: true
+          }
+
+          Repeater {
+            model: root.seasonPickerOptions
+            delegate: Toggle {
+              required property var modelData
+              Layout.fillWidth: true
+              label: modelData.name || ("Season " + modelData.seasonNumber)
+              checked: root.seasonSelected(modelData.seasonNumber)
+              onClicked: root.toggleSeason(modelData.seasonNumber)
+            }
+          }
+
+          Item { Layout.fillHeight: true }
+
+          RowLayout {
+            Layout.fillWidth: true
+            spacing: Style.spacing.sm
+            Button {
+              Layout.fillWidth: true
+              text: "Cancel"
+              onClicked: {
+                root.seasonPickerTmdbId = 0
+                root.seasonPickerOptions = []
+                root.seasonPickerSelected = []
+              }
+            }
+            Button {
+              Layout.fillWidth: true
+              text: "Request"
+              enabled: root.seasonPickerSelected.length > 0
+              onClicked: {
+                seerrApi.requestMedia("tv", root.seasonPickerTmdbId, root.seasonPickerSelected)
+                root.seasonPickerTmdbId = 0
+                root.seasonPickerOptions = []
+                root.seasonPickerSelected = []
+              }
+            }
+          }
         }
       }
 
@@ -200,7 +323,7 @@ Panel {
           }
           Text {
             visible: root.showSettings && seerrApi.authenticated && seerrApi.movieProfiles.length === 0 && seerrApi.tvProfiles.length === 0 && !seerrApi.busy
-            text: "Quality profiles unavailable. The API key may need permission to read Seerr settings."
+            text: "Quality profiles unavailable. In Seerr → Settings → General → API Key, make sure this key has the Settings permission."
             color: Color.muted
             font.family: root.fontFamily
             font.pixelSize: Style.font.bodySmall
@@ -496,7 +619,7 @@ Panel {
         selected: root.selectedResultIndex === resultIndex
         text: modelData.alreadyRequested ? (modelData.statusLabel || "Requested") : (seerrApi.busy ? "…" : "Request")
         enabled: !modelData.alreadyRequested && !seerrApi.busy
-        onClicked: seerrApi.requestMedia(root.resultType(modelData), Number(modelData.id || modelData.tmdbId))
+        onClicked: root.requestResult(modelData)
         Keys.onDownPressed: { root.moveResultSelection(1); event.accepted = true }
         Keys.onUpPressed: { root.moveResultSelection(-1); event.accepted = true }
         Keys.onTabPressed: function(event) {

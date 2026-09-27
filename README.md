@@ -39,6 +39,10 @@ The instance URL is saved separately. **Settings → Sign out** removes the save
 
 Keyring storage uses the freedesktop Secret Service via `secret-tool`. On Omarchy it is usually provided by `gnome-keyring-daemon` and should work without manual setup as long as your login keyring is unlocked.
 
+### Quality profile permissions
+
+Quality profile dropdowns read your configured Radarr/Sonarr servers from Seerr settings. The API key must have permission to read settings. In **Seerr → Settings → General → API Key**, make sure the key includes the **Settings** permission (or grant an admin-level key). Without it, the dropdowns will not populate and requests will fall back to the server default profile.
+
 Check that the service is running:
 
 ```sh
