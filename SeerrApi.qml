@@ -287,6 +287,7 @@ QtObject {
             _xhr = null
         }
         error = ""
+        if (operation === "keyverify") error = "Checking Seerr API key…"
         var requestUrl
         try {
             requestUrl = _url(path)
@@ -399,8 +400,6 @@ QtObject {
 
     function _verifyApiKey(key, storage) {
         _apiKey = String(key)
-        busy = true
-        error = "Checking Seerr API key…"
         authMode = "verifying"
         _send("GET", "/auth/me", null, "keyverify", function(data) {
             busy = false
