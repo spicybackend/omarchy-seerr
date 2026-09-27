@@ -184,6 +184,15 @@ QtObject {
         return match ? Number(match[1]) : null
     }
 
+    function _isReleased(date) {
+        if (!date) return true
+        var d = new Date(date)
+        if (!isNaN(d.getTime())) return d <= new Date()
+        var year = _year(date)
+        if (year) return year <= new Date().getFullYear()
+        return true
+    }
+
     function _statusLabel(mediaInfo, isReleased) {
         if (isReleased === false) return "Not yet released"
         var status = Number(mediaInfo && mediaInfo.status)
@@ -200,8 +209,7 @@ QtObject {
         var date = type === "movie" ? (item.releaseDate || item.release_date) : (item.firstAirDate || item.first_air_date)
         var mediaInfo = item.mediaInfo || item.media || {}
         var requested = Number(mediaInfo.status) >= 2 && Number(mediaInfo.status) <= 5 || (mediaInfo.requests || []).length > 0
-        var releaseDate = date ? new Date(date) : null
-        var isReleased = releaseDate ? releaseDate <= new Date() : true
+        var isReleased = _isReleased(date)
         var existingRequest = (mediaInfo.requests && mediaInfo.requests[0]) || {}
         var existingRequestId = Number(existingRequest.id) || Number(item.requestId) || 0
         var normalized = Object.assign({}, item, {
