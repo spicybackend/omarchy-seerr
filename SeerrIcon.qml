@@ -5,31 +5,32 @@ Item {
     id: root
     property color iconColor: Color.foreground
 
-    Image {
-        id: img
+    Canvas {
+        id: canvas
         anchors.centerIn: parent
         width: parent.width * 0.78
         height: parent.height * 0.78
-        source: Qt.resolvedUrl("seerr-icon.svg")
-        sourceSize.width: width
-        sourceSize.height: height
-        smooth: true
-        visible: false
-    }
 
-    ShaderEffect {
-        anchors.fill: img
-        property variant src: img
-        property color color: root.iconColor
+        onPaint: {
+            var ctx = getContext("2d")
+            ctx.clearRect(0, 0, width, height)
+            if (img.status !== Image.Ready) return
+            ctx.drawImage(img, 0, 0, width, height)
+            ctx.globalCompositeOperation = "source-in"
+            ctx.fillStyle = root.iconColor
+            ctx.fillRect(0, 0, width, height)
+        }
 
-        fragmentShader: "
-            uniform lowp sampler2D src;
-            uniform lowp vec4 color;
-            varying highp vec2 qt_TexCoord0;
-            void main() {
-                lowp vec4 sample = texture2D(src, qt_TexCoord0);
-                gl_FragColor = vec4(color.rgb, sample.a * color.a);
-            }
-        "
+        Image {
+            id: img
+            source: Qt.resolvedUrl("seerr-icon.svg")
+            sourceSize.width: parent.width
+            sourceSize.height: parent.height
+            smooth: true
+            visible: false
+            onStatusChanged: if (status === Image.Ready) canvas.requestPaint()
+        }
+
+        onIconColorChanged: requestPaint()
     }
 }
