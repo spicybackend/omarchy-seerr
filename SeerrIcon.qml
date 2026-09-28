@@ -6,8 +6,11 @@ Item {
     id: root
     property color iconColor: Color.foreground
 
+    transform: Scale { origin.x: 0; origin.y: 0; xScale: root.width / 96; yScale: root.height / 96 }
+
     Shape {
-        anchors.fill: parent
+        width: 96
+        height: 96
         preferredRendererType: Shape.CurveRenderer
 
         ShapePath {
@@ -21,7 +24,8 @@ Item {
     }
 
     Shape {
-        anchors.fill: parent
+        width: 96
+        height: 96
         preferredRendererType: Shape.CurveRenderer
         opacity: 0.6
 

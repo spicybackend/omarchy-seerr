@@ -139,7 +139,7 @@ QtObject {
         var action = _pendingKeyOperation
         _pendingKeyOperation = ""
         keyringAvailable = code === 0 || (action === "lookup" && code === 1)
-        console.log("Seerr keyring " + action + " exit code=" + code + " status=" + exitStatus + " ok=" + keyringAvailable + " output='" + _keyringOutput.replace(/\r?\n/g, " ") + "'")
+        console.log("Seerr keyring " + action + " exit code=" + code + " status=" + exitStatus + " ok=" + keyringAvailable)
         var output = _keyringOutput.replace(/\r?\n$/, "")
         _keyringOutput = ""
         var callback = _pendingKeyCallback
