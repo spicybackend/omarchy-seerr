@@ -56,7 +56,7 @@ BarWidget {
     bar: root.bar
     iconComponent: Component {
       SeerrIcon {
-        foreground: button.foreground
+        iconColor: button.foreground
       }
     }
     tooltipText: "Quick Seerr requests"
