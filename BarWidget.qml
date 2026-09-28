@@ -3,6 +3,7 @@ import Quickshell
 import Quickshell.Io
 import qs.Commons
 import qs.Ui
+
 BarWidget {
   id: root
   moduleName: "spicybackend.seerr"
@@ -49,12 +50,15 @@ BarWidget {
     }
   }
 
-
-  WidgetButton {
+  BarIconButton {
     id: button
     anchors.fill: parent
     bar: root.bar
-    text: ""
+    iconComponent: Component {
+      SeerrIcon {
+        foreground: button.foreground
+      }
+    }
     tooltipText: "Quick Seerr requests"
     onPressed: function(buttonCode) {
       if (buttonCode === Qt.LeftButton) root.toggle()

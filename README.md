@@ -17,13 +17,13 @@ Or install directly from GitHub:
 omarchy plugin add https://github.com/spicybackend/omarchy-seerr.git --enable
 ```
 
-The plugin adds a **TV** button to the bar. Move it if needed:
+The plugin adds a **Seerr** icon to the bar. Move it if needed:
 
 ```sh
 omarchy bar move spicybackend.seerr --section center
 ```
 
-Click the bar button or press the hotkey to open the popup.
+Click the bar icon or press the hotkey to open the popup.
 
 ## Hotkey
 
@@ -62,6 +62,10 @@ Use **Settings → Sign out** to remove the saved key.
 - This is a third-party Omarchy Quattro plugin (`manifest.json` schema v1).
 - Seerr enforces the API key's permissions and quotas.
 - Local email/password sign-in is not supported; use an API key.
+
+## Attributions
+
+The Seerr icon used in the bar widget is from the [Seerr](https://github.com/seerr-team/seerr) project and is used under its MIT license.
 
 ## License
 
