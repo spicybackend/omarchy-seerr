@@ -14,7 +14,7 @@ Item {
             xScale: (root.width / 96) * root.iconScale
             yScale: (root.height / 96) * root.iconScale
         },
-        Translate { y: -root.height * 0.25 }
+        Translate { x: root.height * 0.08; y: -root.height * 0.25 }
     ]
 
     Shape {
