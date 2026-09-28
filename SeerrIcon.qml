@@ -7,12 +7,15 @@ Item {
     property color iconColor: Color.foreground
 
     readonly property real iconScale: 0.82
-    transform: Scale {
-        origin.x: root.width / 2
-        origin.y: root.height / 2
-        xScale: (root.width / 96) * root.iconScale
-        yScale: (root.height / 96) * root.iconScale
-    }
+    transform: [
+        Scale {
+            origin.x: root.width / 2
+            origin.y: root.height / 2
+            xScale: (root.width / 96) * root.iconScale
+            yScale: (root.height / 96) * root.iconScale
+        },
+        Translate { y: -root.height * 0.08 }
+    ]
 
     Shape {
         width: 96
