@@ -6,7 +6,13 @@ Item {
     id: root
     property color iconColor: Color.foreground
 
-    transform: Scale { origin.x: 0; origin.y: 0; xScale: root.width / 96; yScale: root.height / 96 }
+    readonly property real iconScale: 0.82
+    transform: Scale {
+        origin.x: root.width / 2
+        origin.y: root.height / 2
+        xScale: (root.width / 96) * root.iconScale
+        yScale: (root.height / 96) * root.iconScale
+    }
 
     Shape {
         width: 96
