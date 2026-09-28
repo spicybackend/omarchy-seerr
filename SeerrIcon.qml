@@ -5,6 +5,8 @@ Item {
     id: root
     property color iconColor: Color.foreground
 
+    onIconColorChanged: canvas.requestPaint()
+
     Canvas {
         id: canvas
         anchors.centerIn: parent
@@ -30,7 +32,5 @@ Item {
             visible: false
             onStatusChanged: if (status === Image.Ready) canvas.requestPaint()
         }
-
-        onIconColorChanged: requestPaint()
     }
 }
