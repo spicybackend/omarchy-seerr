@@ -3,6 +3,7 @@ import QtQuick.Shapes
 import qs.Commons
 
 Item {
+    id: root
     property color iconColor: Color.foreground
 
     Shape {
