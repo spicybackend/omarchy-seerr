@@ -1,36 +1,26 @@
 import QtQuick
+import Qt5Compat.GraphicalEffects
 import qs.Commons
 
 Item {
     id: root
     property color iconColor: Color.foreground
 
-    onIconColorChanged: canvas.requestPaint()
-
-    Canvas {
-        id: canvas
+    Image {
+        id: img
         anchors.centerIn: parent
         width: parent.width * 0.78
         height: parent.height * 0.78
+        source: Qt.resolvedUrl("icon.svg")
+        sourceSize.width: width
+        sourceSize.height: height
+        smooth: true
+        visible: false
+    }
 
-        onPaint: {
-            var ctx = getContext("2d")
-            ctx.clearRect(0, 0, width, height)
-            if (img.status !== Image.Ready) return
-            ctx.drawImage(img, 0, 0, width, height)
-            ctx.globalCompositeOperation = "source-in"
-            ctx.fillStyle = root.iconColor
-            ctx.fillRect(0, 0, width, height)
-        }
-
-        Image {
-            id: img
-            source: Qt.resolvedUrl("seerr-icon.svg")
-            sourceSize.width: parent.width
-            sourceSize.height: parent.height
-            smooth: true
-            visible: false
-            onStatusChanged: if (status === Image.Ready) canvas.requestPaint()
-        }
+    ColorOverlay {
+        anchors.fill: img
+        source: img
+        color: root.iconColor
     }
 }
